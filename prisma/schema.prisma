@@ -1,0 +1,29 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model AuthToken {
+  id              String   @id
+  merchantId      String
+  authorizedAppId String?  @unique
+  salesChannelId  String?
+  type            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deleted         Boolean  @default(false)
+
+  accessToken     String
+  tokenType       String
+  expiresIn       Int
+  expireDate      DateTime
+  refreshToken    String
+  scope           String?
+}

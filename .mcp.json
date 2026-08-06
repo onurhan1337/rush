@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "shadcn@latest",
+        "mcp"
+      ],
+      "type": "stdio"
+    },
+    "ikas": {
+      "url": "https://api.myikas.com/api/v2/admin/mcp",
+      "type": "http"
+    }
+  }
+}
