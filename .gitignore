@@ -77,3 +77,6 @@ WARP.md
 config.toml
 opencode.json
 # END Ruler Generated Files
+
+# generated widget bundle
+public/rush.js
