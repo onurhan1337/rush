@@ -6,8 +6,11 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider  = "postgresql"
+  // Pooled connection for the app, direct connection for migrations: PgBouncer
+  // cannot run the advisory locks and DDL transactions migrate needs.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model AuthToken {

@@ -245,7 +245,9 @@ OAuth access and refresh tokens stay on the server. They are never returned to t
 
 ## Data
 
-SQLite via Prisma, which is fine for development and small deployments. Point the datasource at Postgres for production.
+Postgres via Prisma. `DATABASE_URL` is the pooled connection the app uses at runtime; `DIRECT_URL` is the unpooled one migrations need, since a connection pooler cannot hold the advisory locks and DDL transactions `prisma migrate` relies on. On Neon the two differ only by the `-pooler` suffix in the host.
+
+Migrations are applied by `prisma migrate deploy` as part of the build.
 
 | Model | Purpose |
 | --- | --- |
