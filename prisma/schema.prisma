@@ -41,6 +41,7 @@ model Campaign {
   rules           String    @default("{\"match\":\"all\",\"conditions\":[]}")
   appearance      String    @default("{}")
   ikasCampaignId  String?
+  ikasCampaignIds String    @default("[]")
   priority        Int       @default(0)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

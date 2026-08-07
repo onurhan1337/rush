@@ -61,6 +61,7 @@ export const SEARCH_PRODUCT = gql`
           sellIfOutOfStock
           images {
             imageId
+            fileName
             isMain
             order
             isVideo
@@ -107,6 +108,7 @@ export const GET_PRODUCT_BY_ID = gql`
           sellIfOutOfStock
           images {
             imageId
+            fileName
             isMain
             order
             isVideo

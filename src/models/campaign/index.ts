@@ -15,7 +15,7 @@ export interface Campaign {
   config: Record<string, unknown>;
   rules: RuleSet;
   appearance: Appearance;
-  ikasCampaignId?: string;
+  ikasCampaignIds: string[];
   priority: number;
   createdAt: string;
   updatedAt: string;

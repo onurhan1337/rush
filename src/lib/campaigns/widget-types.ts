@@ -1,14 +1,26 @@
+import type { IkasMedia } from '@/lib/ikas-image';
 import type { Appearance } from './appearance';
 import type { RuleSet } from './rules/types';
+import type { VariantSelection, VariantStyle } from './types/offer-product/schema';
 
 export type WidgetVariant = {
   id: string;
   label: string;
-  imageUrl?: string;
+  media?: IkasMedia;
   swatchColor?: string;
   sellPrice: number;
   offerPrice: number;
   inStock: boolean;
+};
+
+export type WidgetProduct = {
+  id: string;
+  name: string;
+  url: string;
+  hasOptions: boolean;
+  quantity: number;
+  currencySymbol: string;
+  variants: WidgetVariant[];
 };
 
 export type WidgetCountdown = {
@@ -22,13 +34,10 @@ export type OfferProductWidgetData = {
   subtitle: string;
   ctaLabel: string;
   tabLabel: string;
-  productName: string;
-  productUrl: string;
-  hasOptions: boolean;
-  quantity: number;
-  currencySymbol: string;
+  variantStyle: VariantStyle;
+  variantSelection: VariantSelection;
   countdown: WidgetCountdown;
-  variants: WidgetVariant[];
+  products: WidgetProduct[];
 };
 
 export type WidgetCampaign = {

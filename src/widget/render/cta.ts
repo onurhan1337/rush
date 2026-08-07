@@ -8,6 +8,12 @@ export type Cta = {
   setState: (state: CtaState, message?: string) => void;
 };
 
+const LABELS: Partial<Record<CtaState, string>> = {
+  success: '✓ Sepete eklendi',
+  soldout: 'Tükendi',
+  redirect: 'Ürüne git',
+};
+
 export function createCta(label: string, onClick: () => void): Cta {
   const node = el('div');
   const button = el('button', 'rush-cta', label);
@@ -22,11 +28,11 @@ export function createCta(label: string, onClick: () => void): Cta {
 
   const setState = (state: CtaState, message?: string) => {
     error.style.display = 'none';
-    button.disabled = false;
+    button.disabled = state === 'loading' || state === 'soldout';
+    button.setAttribute('data-state', state);
     button.textContent = '';
 
     if (state === 'loading') {
-      button.disabled = true;
       const dots = el('span', 'rush-dots');
       dots.appendChild(el('span'));
       dots.appendChild(el('span'));
@@ -35,23 +41,7 @@ export function createCta(label: string, onClick: () => void): Cta {
       return;
     }
 
-    if (state === 'success') {
-      button.textContent = '✓ Sepete eklendi';
-      return;
-    }
-
-    if (state === 'soldout') {
-      button.disabled = true;
-      button.textContent = 'TÜKENDİ';
-      return;
-    }
-
-    if (state === 'redirect') {
-      button.textContent = 'ÜRÜNE GİT';
-      return;
-    }
-
-    button.textContent = label;
+    button.textContent = LABELS[state] ?? label;
 
     if (state === 'error' && message) {
       error.textContent = message;

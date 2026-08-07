@@ -1,4 +1,4 @@
-import type { WidgetVariant } from '@/lib/campaigns/widget-types';
+import type { WidgetProduct, WidgetVariant } from '@/lib/campaigns/widget-types';
 import { el, formatMoney } from './dom';
 
 export type ProductCard = {
@@ -6,16 +6,61 @@ export type ProductCard = {
   update: (variant: WidgetVariant) => void;
 };
 
-export function createProductCard(productName: string, currencySymbol: string, variant: WidgetVariant): ProductCard {
-  const node = el('div', 'rush-product');
+function createMediaSlot(productName: string) {
+  const node = el('div', 'rush-media');
+  node.setAttribute('data-state', 'empty');
 
   const image = el('img');
   image.loading = 'lazy';
+  image.decoding = 'async';
+  image.sizes = '72px';
   image.alt = productName;
+  image.addEventListener('error', () => node.setAttribute('data-state', 'empty'));
+
+  const video = el('video');
+  video.muted = true;
+  video.loop = true;
+  video.autoplay = true;
+  video.playsInline = true;
+  video.preload = 'metadata';
+  video.setAttribute('aria-label', productName);
+  video.addEventListener('error', () => node.setAttribute('data-state', 'empty'));
+
   node.appendChild(image);
+  node.appendChild(video);
+
+  const update = ({ media }: WidgetVariant) => {
+    if (!media) {
+      node.setAttribute('data-state', 'empty');
+      video.removeAttribute('src');
+      return;
+    }
+
+    node.setAttribute('data-state', media.isVideo ? 'video' : 'image');
+
+    if (media.isVideo) {
+      image.removeAttribute('srcset');
+      image.removeAttribute('src');
+      if (video.src !== media.url) video.src = media.url;
+      return;
+    }
+
+    video.removeAttribute('src');
+    if (media.srcSet) image.srcset = media.srcSet;
+    image.src = media.url;
+  };
+
+  return { node, update };
+}
+
+export function createProductCard(product: WidgetProduct, variant: WidgetVariant): ProductCard {
+  const node = el('div', 'rush-product');
+
+  const media = createMediaSlot(product.name);
+  node.appendChild(media.node);
 
   const info = el('div', 'rush-product-info');
-  const name = el('div', 'rush-product-name', productName);
+  const name = el('div', 'rush-product-name', product.name);
   const prices = el('div', 'rush-prices');
   const oldPrice = el('span', 'rush-old');
   const newPrice = el('span', 'rush-new');
@@ -26,10 +71,9 @@ export function createProductCard(productName: string, currencySymbol: string, v
   node.appendChild(info);
 
   const update = (next: WidgetVariant) => {
-    if (next.imageUrl) image.src = next.imageUrl;
-    image.style.display = next.imageUrl ? '' : 'none';
-    oldPrice.textContent = next.sellPrice > next.offerPrice ? formatMoney(next.sellPrice, currencySymbol) : '';
-    newPrice.textContent = formatMoney(next.offerPrice, currencySymbol);
+    media.update(next);
+    oldPrice.textContent = next.sellPrice > next.offerPrice ? formatMoney(next.sellPrice, product.currencySymbol) : '';
+    newPrice.textContent = formatMoney(next.offerPrice, product.currencySymbol);
   };
 
   update(variant);

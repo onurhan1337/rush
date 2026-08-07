@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { apiError, withMerchantParams } from '@/lib/api-route-helpers';
 import { campaignPatchSchema, parseCampaignConfig } from '@/lib/campaigns/api-schema';
-import { deleteIkasCampaign } from '@/lib/campaigns/ikas-campaign-sync';
+import { deleteIkasCampaigns } from '@/lib/campaigns/ikas-campaign-sync';
 import { CampaignManager } from '@/models/campaign/manager';
 import type { Campaign } from '@/models/campaign';
 
@@ -55,7 +55,7 @@ export const DELETE = withMerchantParams<Params>(async (_request, context, param
   const campaign = await CampaignManager.get(context.authorizedAppId, params.id);
   if (!campaign) return apiError(404, 'Kampanya bulunamadı');
 
-  await deleteIkasCampaign(context.ikas, campaign.ikasCampaignId);
+  await deleteIkasCampaigns(context.ikas, campaign.ikasCampaignIds);
   await CampaignManager.delete(context.authorizedAppId, params.id);
 
   return NextResponse.json({ data: { deleted: true } });

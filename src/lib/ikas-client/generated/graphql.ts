@@ -312,6 +312,7 @@ export type SearchProductQueryData = {
   sellIfOutOfStock?: boolean;
   images?: Array<{
   imageId?: string;
+  fileName?: string;
   isMain: boolean;
   order: number;
   isVideo?: boolean;
@@ -362,6 +363,7 @@ export type GetProductByIdQueryData = {
   sellIfOutOfStock?: boolean;
   images?: Array<{
   imageId?: string;
+  fileName?: string;
   isMain: boolean;
   order: number;
   isVideo?: boolean;
@@ -573,6 +575,7 @@ export class GeneratedQueries {
           sellIfOutOfStock
           images {
             imageId
+            fileName
             isMain
             order
             isVideo
@@ -622,6 +625,7 @@ export class GeneratedQueries {
           sellIfOutOfStock
           images {
             imageId
+            fileName
             isMain
             order
             isVideo

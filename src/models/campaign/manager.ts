@@ -13,6 +13,12 @@ function parseJson<T>(raw: string | null | undefined, fallback: T): T {
   }
 }
 
+function readIkasCampaignIds(db: any): string[] {
+  const parsed = parseJson<string[]>(db.ikasCampaignIds, []);
+  if (Array.isArray(parsed) && parsed.length) return parsed;
+  return db.ikasCampaignId ? [db.ikasCampaignId] : [];
+}
+
 export class CampaignManager {
   private static toModel(db: any): Campaign {
     return {
@@ -27,7 +33,7 @@ export class CampaignManager {
       config: parseJson<Record<string, unknown>>(db.config, {}),
       rules: parseJson<RuleSet>(db.rules, EMPTY_RULE_SET),
       appearance: { ...DEFAULT_APPEARANCE, ...parseJson<Partial<Appearance>>(db.appearance, {}) },
-      ikasCampaignId: db.ikasCampaignId ?? undefined,
+      ikasCampaignIds: readIkasCampaignIds(db),
       priority: db.priority ?? 0,
       createdAt: new Date(db.createdAt).toISOString(),
       updatedAt: new Date(db.updatedAt).toISOString(),
@@ -47,7 +53,8 @@ export class CampaignManager {
       config: JSON.stringify(campaign.config ?? {}),
       rules: JSON.stringify(campaign.rules ?? EMPTY_RULE_SET),
       appearance: JSON.stringify(campaign.appearance ?? DEFAULT_APPEARANCE),
-      ikasCampaignId: campaign.ikasCampaignId ?? null,
+      ikasCampaignId: campaign.ikasCampaignIds?.[0] ?? null,
+      ikasCampaignIds: JSON.stringify(campaign.ikasCampaignIds ?? []),
       priority: campaign.priority ?? 0,
       deleted: campaign.deleted ?? false,
     };

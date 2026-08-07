@@ -39,6 +39,7 @@ export const POST = withMerchant(async (request, context) => {
     config: (Object.keys(parsed.data.config).length ? parsed.data.config : definition.defaultConfig) as Record<string, unknown>,
     rules: parsed.data.rules,
     appearance: { ...DEFAULT_APPEARANCE, ...parsed.data.appearance },
+    ikasCampaignIds: [],
     priority: parsed.data.priority,
   });
 

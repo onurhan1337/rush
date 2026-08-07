@@ -11,10 +11,11 @@ const FIELD_LABELS: Record<string, TranslationKey> = {
   name: 'basics.name',
   startsAt: 'basics.startsAt',
   endsAt: 'basics.endsAt',
-  'config.productId': 'product.search',
-  'config.variantIds': 'product.variants',
-  'config.offerPrice': 'pricing.offerPrice',
-  'config.quantity': 'pricing.quantity',
+  'config.items': 'product.title',
+  'config.items.productId': 'product.search',
+  'config.items.variantIds': 'product.variants',
+  'config.items.offerPrice': 'pricing.offerPrice',
+  'config.items.quantity': 'pricing.quantity',
   'config.countdown': 'countdown.title',
   'config.countdown.endsAt': 'countdown.endsAt',
   'config.countdown.durationSec': 'countdown.duration',
@@ -61,7 +62,8 @@ export function ValidationSummary({ errors }: { errors: FieldErrors<CampaignForm
       <AlertDescription>
         <ul className="mt-1 flex flex-col gap-1">
           {issues.map((issue) => {
-            const labelKey = FIELD_LABELS[issue.path] ?? FIELD_LABELS[issue.path.replace(/\.\d+$/, '')];
+            const normalized = issue.path.replace(/\.\d+/g, '');
+            const labelKey = FIELD_LABELS[issue.path] ?? FIELD_LABELS[normalized];
             return (
               <li key={issue.path} className="text-xs">
                 <span className="font-medium">{labelKey ? t(labelKey) : issue.path}</span>

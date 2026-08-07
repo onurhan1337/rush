@@ -25,6 +25,7 @@ function resolveMountTarget(target: MountTarget, host: HTMLElement): boolean {
 export function createShadowHost(campaignId: string, appearance: Appearance): ShadowHost | null {
   const host = document.createElement('div');
   host.setAttribute('data-rush', campaignId);
+  host.lang = 'tr';
   host.style.all = 'initial';
 
   if (!resolveMountTarget(appearance.mount, host)) return null;

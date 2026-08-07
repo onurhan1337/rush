@@ -5,12 +5,14 @@ type QueuedEvent = { campaignId: string; type: CampaignEventType; variantId?: st
 const FLUSH_INTERVAL_MS = 2000;
 const MAX_BATCH = 20;
 const SESSION_KEY = 'rush.sid';
+const CONTENT_TYPE = 'text/plain;charset=UTF-8';
 
 let queue: QueuedEvent[] = [];
 let endpoint = '';
 let publicKey = '';
 let timer: ReturnType<typeof setTimeout> | null = null;
 let enabled = false;
+let listening = false;
 
 function sessionId(): string {
   try {
@@ -30,7 +32,8 @@ export function initEvents(eventsUrl: string, key: string): void {
   publicKey = key;
   enabled = !!eventsUrl && !!key;
 
-  if (!enabled) return;
+  if (!enabled || listening) return;
+  listening = true;
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flush();
@@ -38,28 +41,39 @@ export function initEvents(eventsUrl: string, key: string): void {
   window.addEventListener('pagehide', flush);
 }
 
+// The body is sent as text/plain so the cross-origin POST stays a CORS-simple request:
+// application/json forces a preflight, which sendBeacon cannot perform — the batch was
+// dropped without a trace.
+function deliver(body: string): boolean {
+  try {
+    if (navigator.sendBeacon && navigator.sendBeacon(endpoint, new Blob([body], { type: CONTENT_TYPE }))) return true;
+  } catch {
+    // beacon unavailable — fall through to fetch
+  }
+
+  try {
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': CONTENT_TYPE },
+      body,
+      keepalive: true,
+      credentials: 'omit',
+    }).catch(() => {});
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function flush(): void {
   if (!enabled || !queue.length) return;
 
   const batch = queue.slice(0, MAX_BATCH);
-  queue = queue.slice(MAX_BATCH);
+  const pending = queue.slice(MAX_BATCH);
+  queue = pending;
 
   const body = JSON.stringify({ key: publicKey, sessionId: sessionId(), events: batch });
-
-  try {
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' }));
-      return;
-    }
-  } catch {
-    // fall through to fetch
-  }
-
-  try {
-    fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
-  } catch {
-    // event delivery is best-effort
-  }
+  if (!deliver(body)) queue = batch.concat(pending);
 }
 
 export function track(campaignId: string, type: CampaignEventType, variantId?: string, value?: number): void {

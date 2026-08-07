@@ -7,12 +7,17 @@ import type { WidgetConfigPayload } from '@/lib/campaigns/widget-types';
 import type { Campaign } from '@/models/campaign';
 import type { CampaignFormValues } from '../types';
 
-export function usePreviewPayload(campaign: Campaign, values: CampaignFormValues, product: ResolvedProduct | undefined): WidgetConfigPayload {
+export function usePreviewPayload(
+  campaign: Campaign,
+  values: CampaignFormValues,
+  products: Record<string, ResolvedProduct>,
+): WidgetConfigPayload {
   const serialized = JSON.stringify(values);
+  const productKey = Object.keys(products).sort().join(',');
 
   return useMemo(() => {
     const empty: WidgetConfigPayload = { campaigns: [], eventsUrl: '' };
-    if (!product) return empty;
+    if (!productKey) return empty;
 
     const definition = getCampaignType(campaign.type);
     if (!definition) return empty;
@@ -30,8 +35,8 @@ export function usePreviewPayload(campaign: Campaign, values: CampaignFormValues
       config: values.config as unknown as Record<string, unknown>,
     };
 
-    const widgetCampaign = definition.toWidgetPayload(draft, parsed.data, product);
+    const widgetCampaign = definition.toWidgetPayload(draft, parsed.data, Object.values(products));
     return widgetCampaign ? { campaigns: [widgetCampaign], eventsUrl: '' } : empty;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaign, serialized, product]);
+  }, [campaign, serialized, productKey]);
 }

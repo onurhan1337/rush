@@ -7,6 +7,7 @@ import { getPublicBaseUrl } from '@/lib/public-url';
 import { AuthTokenManager } from '@/models/auth-token/manager';
 import { CampaignManager } from '@/models/campaign/manager';
 import { MerchantSettingsManager } from '@/models/merchant-settings/manager';
+import type { ResolvedProduct } from '@/lib/campaigns/product';
 import type { WidgetCampaign, WidgetConfigPayload } from '@/lib/campaigns/widget-types';
 
 const CORS_HEADERS = {
@@ -50,14 +51,17 @@ export async function GET(request: NextRequest) {
       const parsedConfig = definition.configSchema.safeParse(campaign.config);
       if (!parsedConfig.success) continue;
 
-      const productId = (parsedConfig.data as { productId: string }).productId;
-      if (!productCache.has(productId)) {
-        productCache.set(productId, await getProduct(ikas, productId));
+      const products: ResolvedProduct[] = [];
+      for (const item of (parsedConfig.data as { items: Array<{ productId: string }> }).items) {
+        if (!productCache.has(item.productId)) {
+          productCache.set(item.productId, await getProduct(ikas, settings.merchantId, item.productId));
+        }
+        const product = productCache.get(item.productId);
+        if (product) products.push(product);
       }
-      const product = productCache.get(productId);
-      if (!product) continue;
+      if (!products.length) continue;
 
-      const widgetCampaign = definition.toWidgetPayload(campaign, parsedConfig.data, product);
+      const widgetCampaign = definition.toWidgetPayload(campaign, parsedConfig.data, products);
       if (widgetCampaign) widgetCampaigns.push(widgetCampaign);
     }
 

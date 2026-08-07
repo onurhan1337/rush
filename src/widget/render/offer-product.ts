@@ -1,4 +1,4 @@
-import type { WidgetCampaign, WidgetVariant } from '@/lib/campaigns/widget-types';
+import type { WidgetCampaign, WidgetProduct, WidgetVariant } from '@/lib/campaigns/widget-types';
 import { addToCart } from '../context/ikas';
 import { track } from '../transport/events';
 import { el } from './dom';
@@ -7,6 +7,7 @@ import { createStickyTab } from './sticky-tab';
 import { createPanel } from './panel';
 import { createCountdown } from './countdown';
 import { createProductCard } from './product-card';
+import { createProductSwitcher } from './product-switcher';
 import { createVariantPicker } from './variant-picker';
 import { createCta } from './cta';
 
@@ -53,8 +54,13 @@ function resolveEndsAt(campaignId: string, countdown: WidgetCampaign['data']['co
   }
 }
 
+function defaultVariant(product: WidgetProduct): WidgetVariant {
+  return product.variants.find((variant) => variant.inStock) ?? product.variants[0];
+}
+
 export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign | null {
   const { data, appearance } = campaign;
+  if (!data.products.length) return null;
   if (isDismissed(campaign.id)) return null;
 
   const endsAt = resolveEndsAt(campaign.id, data.countdown);
@@ -64,7 +70,9 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
   if (!maybeShadow) return null;
   const shadow = maybeShadow;
 
-  let selected: WidgetVariant = data.variants.find((variant) => variant.inStock) ?? data.variants[0];
+  let activeIndex = 0;
+  let activeProduct = data.products[0];
+  let selection: WidgetVariant[] = [defaultVariant(activeProduct)];
   let countdownHandle: { stop: () => void } | null = null;
   let panelMounted = false;
 
@@ -76,40 +84,76 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
   shadow.container.appendChild(tab);
   shadow.container.appendChild(panel.node);
 
-  const productCard = createProductCard(data.productName, data.currencySymbol, selected);
-
+  const stage = el('div', 'rush-stage');
   const cta = createCta(data.ctaLabel, () => handleCta());
+  const switcher = data.products.length > 1 ? createProductSwitcher(data.products.length, (step) => showProduct(activeIndex + step)) : null;
 
   function syncCtaState() {
-    if (data.hasOptions) return cta.setState('redirect');
-    if (!selected.inStock) return cta.setState('soldout');
+    if (activeProduct.hasOptions) return cta.setState('redirect');
+    if (!selection.some((variant) => variant.inStock)) return cta.setState('soldout');
     cta.setState('idle');
   }
 
-  async function handleCta() {
-    track(campaign.id, 'CLICK', selected.id);
+  function showProduct(index: number) {
+    if (index < 0 || index >= data.products.length) return;
 
-    if (data.hasOptions) {
-      window.location.href = data.productUrl;
+    activeIndex = index;
+    activeProduct = data.products[index];
+    selection = [defaultVariant(activeProduct)];
+    stage.innerHTML = '';
+
+    if (switcher) {
+      switcher.sync(activeIndex);
+      stage.appendChild(switcher.node);
+    }
+
+    const card = createProductCard(activeProduct, selection[0]);
+    stage.appendChild(card.node);
+
+    const picker = createVariantPicker({
+      variants: activeProduct.variants,
+      style: data.variantStyle,
+      selection: data.variantSelection,
+      currencySymbol: activeProduct.currencySymbol,
+      onChange: (variants) => {
+        selection = variants;
+        card.update(variants[0]);
+        syncCtaState();
+      },
+    });
+    if (picker) stage.appendChild(picker.node);
+
+    syncCtaState();
+  }
+
+  async function handleCta() {
+    track(campaign.id, 'CLICK', selection[0]?.id);
+
+    if (activeProduct.hasOptions) {
+      window.location.href = activeProduct.url;
       return;
     }
 
     cta.setState('loading');
-    const result = await addToCart(selected.id, data.quantity);
 
-    if (result.success) {
-      cta.setState('success');
-      track(campaign.id, 'ADD_TO_CART', selected.id, selected.offerPrice * data.quantity);
-      setTimeout(() => panel.close(), 2000);
-      return;
+    for (const variant of selection) {
+      const result = await addToCart(variant.id, activeProduct.quantity);
+
+      if (result.unavailable) {
+        window.location.href = activeProduct.url;
+        return;
+      }
+
+      if (!result.success) {
+        cta.setState('error', result.error || 'Ürün sepete eklenemedi.');
+        return;
+      }
+
+      track(campaign.id, 'ADD_TO_CART', variant.id, variant.offerPrice * activeProduct.quantity);
     }
 
-    if (result.unavailable) {
-      window.location.href = data.productUrl;
-      return;
-    }
-
-    cta.setState('error', result.error || 'Ürün sepete eklenemedi.');
+    cta.setState('success');
+    setTimeout(() => panel.close(), 2000);
   }
 
   function mountPanelBody() {
@@ -122,17 +166,9 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
       panel.body.appendChild(countdown.node);
     }
 
-    panel.body.appendChild(productCard.node);
-
-    const picker = createVariantPicker(data.variants, selected.id, (variant) => {
-      selected = variant;
-      productCard.update(variant);
-      syncCtaState();
-    });
-    if (picker) panel.body.appendChild(picker);
-
+    panel.body.appendChild(stage);
     panel.body.appendChild(cta.node);
-    syncCtaState();
+    showProduct(0);
   }
 
   function handleExpiry() {

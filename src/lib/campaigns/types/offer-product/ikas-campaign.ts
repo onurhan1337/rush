@@ -8,18 +8,14 @@ import {
 import type { Campaign } from '@/models/campaign';
 import type { ResolvedProduct, ResolvedVariant } from '@/lib/campaigns/product';
 import type { CartContainsProductRule, CartTotalRule } from '@/lib/campaigns/rules/types';
-import type { OfferProductConfig } from './schema';
+import type { OfferProductConfig, OfferProductItem } from './schema';
 
-export type IkasCampaignMapping = { ok: true; input: CreateCampaignInput } | { ok: false; error: string };
+export type IkasCampaignMapping = { ok: true; inputs: CreateCampaignInput[] } | { ok: false; error: string };
 
 export type MappingContext = {
-  product: ResolvedProduct;
+  products: ResolvedProduct[];
   salesChannelIds: string[];
 };
-
-function selectedVariants(product: ResolvedProduct, config: OfferProductConfig): ResolvedVariant[] {
-  return product.variants.filter((variant) => config.variantIds.includes(variant.id));
-}
 
 function dateRange(campaign: Campaign): CreateCampaignInput['dateRange'] {
   const start = campaign.startsAt ? Date.parse(campaign.startsAt) : undefined;
@@ -28,20 +24,23 @@ function dateRange(campaign: Campaign): CreateCampaignInput['dateRange'] {
   return { start, end };
 }
 
-export function mapOfferProductToIkasCampaign(campaign: Campaign, config: OfferProductConfig, context: MappingContext): IkasCampaignMapping {
-  const variants = selectedVariants(context.product, config);
-  if (!variants.length) return { ok: false, error: 'Seçili varyant bulunamadı' };
-
+function itemInput(
+  campaign: Campaign,
+  item: OfferProductItem,
+  variants: ResolvedVariant[],
+  title: string,
+  salesChannelIds: string[],
+): { ok: true; input: CreateCampaignInput } | { ok: false; error: string } {
   const cartContains = campaign.rules.conditions.find((rule): rule is CartContainsProductRule => rule.kind === 'cart_contains_product');
   const cartTotal = campaign.rules.conditions.find((rule): rule is CartTotalRule => rule.kind === 'cart_total' && rule.op === 'gte');
 
   const base = {
-    title: `Rush — ${campaign.name}`,
+    title,
     applicablePrice: CampaignApplicablePriceEnum.SELL_PRICE,
     canCombineWithOtherCampaigns: false,
     hasCoupon: false,
     includeDiscountedProducts: true,
-    salesChannelIds: context.salesChannelIds.length ? context.salesChannelIds : undefined,
+    salesChannelIds: salesChannelIds.length ? salesChannelIds : undefined,
     dateRange: dateRange(campaign),
   };
 
@@ -62,10 +61,10 @@ export function mapOfferProductToIkasCampaign(campaign: Campaign, config: OfferP
             },
           },
           getY: {
-            amount: config.quantity,
-            discountRatio: config.offerPrice,
+            amount: item.quantity,
+            discountRatio: item.offerPrice,
             discountType: CampaignGetYDiscountTypeEnum.FIXED_PRODUCT_PRICE,
-            filter: { type: CampaignFilterTypeEnum.VARIANT, idList: config.variantIds },
+            filter: { type: CampaignFilterTypeEnum.VARIANT, idList: item.variantIds },
           },
           maxUsagePerOrder: 1,
         },
@@ -77,13 +76,13 @@ export function mapOfferProductToIkasCampaign(campaign: Campaign, config: OfferP
   if (sellPrices.length > 1) {
     return {
       ok: false,
-      error: 'Seçili varyantların satış fiyatları farklı. Tek bir sabit indirim tutarı uygulanamaz — aynı fiyatlı varyantları seçin veya sepet ürünü kuralı ekleyin.',
+      error: `${title}: seçili varyantların satış fiyatları farklı. Tek bir sabit indirim tutarı uygulanamaz — aynı fiyatlı varyantları seçin veya sepet ürünü kuralı ekleyin.`,
     };
   }
 
   const sellPrice = sellPrices[0];
-  if (config.offerPrice >= sellPrice) {
-    return { ok: false, error: 'Fırsat fiyatı satış fiyatından düşük olmalı' };
+  if (item.offerPrice >= sellPrice) {
+    return { ok: false, error: `${title}: fırsat fiyatı satış fiyatından düşük olmalı` };
   }
 
   return {
@@ -92,13 +91,37 @@ export function mapOfferProductToIkasCampaign(campaign: Campaign, config: OfferP
       ...base,
       type: CampaignTypeEnum.FIXED_AMOUNT,
       fixedDiscount: {
-        amount: Number((sellPrice - config.offerPrice).toFixed(2)),
+        amount: Number((sellPrice - item.offerPrice).toFixed(2)),
         isApplyByCartAmount: false,
         shouldMatchAllConditions: true,
-        filters: [{ type: CampaignFilterTypeEnum.VARIANT, idList: config.variantIds }],
-        lineItemQuantityRange: { max: config.quantity },
+        filters: [{ type: CampaignFilterTypeEnum.VARIANT, idList: item.variantIds }],
+        lineItemQuantityRange: { max: item.quantity },
         priceRange: cartTotal ? { min: cartTotal.amount } : undefined,
       },
     },
   };
+}
+
+// Every product gets its own ikas campaign: one fixed-amount discount cannot express
+// different offer prices across products.
+export function mapOfferProductToIkasCampaign(campaign: Campaign, config: OfferProductConfig, context: MappingContext): IkasCampaignMapping {
+  const byId = new Map(context.products.map((product) => [product.id, product]));
+  const inputs: CreateCampaignInput[] = [];
+
+  for (const item of config.items) {
+    const product = byId.get(item.productId);
+    if (!product) return { ok: false, error: 'Kampanyadaki ürün ikas tarafında bulunamadı' };
+
+    const variants = product.variants.filter((variant) => item.variantIds.includes(variant.id));
+    if (!variants.length) return { ok: false, error: `${product.name}: seçili varyant bulunamadı` };
+
+    const title = config.items.length > 1 ? `Rush — ${campaign.name} — ${product.name}` : `Rush — ${campaign.name}`;
+    const mapped = itemInput(campaign, item, variants, title, context.salesChannelIds);
+    if (!mapped.ok) return mapped;
+
+    inputs.push(mapped.input);
+  }
+
+  if (!inputs.length) return { ok: false, error: 'Kampanyada ürün yok' };
+  return { ok: true, inputs };
 }

@@ -15,7 +15,7 @@ export interface CampaignTypeDefinition<TConfig = unknown> {
   defaultConfig: TConfig;
   supportedRules: RuleKind[];
   toIkasCampaignInput(campaign: Campaign, config: TConfig, context: MappingContext): IkasCampaignMapping;
-  toWidgetPayload(campaign: Campaign, config: TConfig, product: ResolvedProduct): WidgetCampaign | null;
+  toWidgetPayload(campaign: Campaign, config: TConfig, products: ResolvedProduct[]): WidgetCampaign | null;
 }
 
 export type AnyCampaignTypeDefinition = CampaignTypeDefinition<any>;

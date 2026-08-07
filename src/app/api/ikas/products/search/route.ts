@@ -12,11 +12,11 @@ export const GET = withMerchant(async (request, context) => {
   const id = searchParams.get('id');
 
   if (id) {
-    const product = await getProduct(context.ikas, id);
+    const product = await getProduct(context.ikas, context.merchantId, id);
     return NextResponse.json({ data: { products: product ? [product] : [] } });
   }
 
   const query = searchParams.get('q') ?? '';
-  const products = await searchProducts(context.ikas, query.trim());
+  const products = await searchProducts(context.ikas, context.merchantId, query.trim());
   return NextResponse.json({ data: { products } });
 });

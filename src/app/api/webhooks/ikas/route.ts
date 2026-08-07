@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIkas } from '@/helpers/api-helpers';
-import { deleteIkasCampaign } from '@/lib/campaigns/ikas-campaign-sync';
+import { deleteIkasCampaigns } from '@/lib/campaigns/ikas-campaign-sync';
 import { uninstallScript } from '@/lib/storefront-script';
 import { AuthTokenManager } from '@/models/auth-token/manager';
 import { CampaignManager } from '@/models/campaign/manager';
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const campaigns = await CampaignManager.list(authorizedAppId);
 
     for (const campaign of campaigns) {
-      await deleteIkasCampaign(ikas, campaign.ikasCampaignId);
+      await deleteIkasCampaigns(ikas, campaign.ikasCampaignIds);
     }
 
     await uninstallScript(ikas, authorizedAppId);

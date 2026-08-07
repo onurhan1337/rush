@@ -32,31 +32,39 @@ const INITIAL_CONTEXT: PreviewContext = {
 export function CampaignForm({ campaign: initialCampaign, token }: { campaign: Campaign; token: string }) {
   const t = useT();
   const [campaign, setCampaign] = useState(initialCampaign);
-  const [product, setProduct] = useState<ResolvedProduct | undefined>();
+  const [products, setProducts] = useState<Record<string, ResolvedProduct>>({});
   const [context, setContext] = useState(INITIAL_CONTEXT);
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
 
   const { form, saving, savedAt } = useCampaignForm(campaign, token);
   const values = form.watch();
-  const payload = usePreviewPayload(campaign, values, product);
+  const payload = usePreviewPayload(campaign, values, products);
 
-  const productId = values.config?.productId;
+  const registerProduct = useCallback((product: ResolvedProduct) => {
+    setProducts((current) => (current[product.id] ? current : { ...current, [product.id]: product }));
+  }, []);
+
+  const missingIds = (values.config?.items ?? [])
+    .map((item) => item.productId)
+    .filter((id) => id && !products[id])
+    .join(',');
 
   useEffect(() => {
-    if (!productId || product?.id === productId) return;
+    if (!missingIds) return;
 
     let cancelled = false;
-    ApiRequests.ikas
-      .searchProducts(token, { id: productId })
-      .then((response) => {
-        if (!cancelled) setProduct(response.data?.data?.products?.[0]);
+    Promise.all(missingIds.split(',').map((id) => ApiRequests.ikas.searchProducts(token, { id })))
+      .then((responses) => {
+        if (cancelled) return;
+        const loaded = responses.map((response) => response.data?.data?.products?.[0]).filter((item): item is ResolvedProduct => !!item);
+        if (loaded.length) setProducts((current) => ({ ...current, ...Object.fromEntries(loaded.map((item) => [item.id, item])) }));
       })
       .catch(() => {});
 
     return () => {
       cancelled = true;
     };
-  }, [productId, product?.id, token]);
+  }, [missingIds, token]);
 
   const [showIssues, setShowIssues] = useState(false);
 
@@ -93,8 +101,8 @@ export function CampaignForm({ campaign: initialCampaign, token }: { campaign: C
       <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <form className="flex flex-col" onSubmit={(event) => event.preventDefault()}>
           <BasicsSection form={form} />
-          <ProductSection form={form} token={token} product={product} onProductChange={setProduct} />
-          <PricingSection form={form} product={product} />
+          <ProductSection form={form} token={token} products={products} onProductLoaded={registerProduct} />
+          <PricingSection form={form} products={products} />
           <CountdownSection form={form} />
           <ContentSection form={form} />
           <AppearanceSection form={form} />
@@ -104,7 +112,7 @@ export function CampaignForm({ campaign: initialCampaign, token }: { campaign: C
         <div className="flex flex-col gap-4 lg:sticky lg:top-8 lg:self-start">
           <PreviewControls context={context} onContextChange={setContext} device={device} onDeviceChange={setDevice} />
           <PreviewFrame payload={payload} context={context} device={device} />
-          {!product ? <p className="text-center text-xs text-muted-foreground">{t('preview.selectProduct')}</p> : null}
+          {!Object.keys(products).length ? <p className="text-center text-xs text-muted-foreground">{t('preview.selectProduct')}</p> : null}
         </div>
       </div>
     </div>
