@@ -28,6 +28,11 @@ function sumTotals(totals: Record<string, CampaignTotals>): CampaignTotals {
   );
 }
 
+function rate(part: number, whole: number): number {
+  if (whole <= 0) return 0;
+  return Math.min(100, Math.round((part / whole) * 100));
+}
+
 function dailySeries(daily: Record<string, CampaignStat[]>, days: number): number[] {
   const byDay = new Map<string, number>();
 
@@ -77,8 +82,8 @@ export function OverviewCards({ campaigns, totals, daily }: Props) {
   const summed = sumTotals(totals);
   const active = campaigns.filter((campaign) => campaign.status === 'ACTIVE').length;
 
-  const openRate = summed.impressions ? Math.round((summed.opens / summed.impressions) * 100) : 0;
-  const cartRate = summed.opens ? Math.round((summed.addToCarts / summed.opens) * 100) : 0;
+  const openRate = rate(summed.opens, summed.impressions);
+  const cartRate = rate(summed.addToCarts, summed.opens);
 
   const cards: Array<{ label: TranslationKey; value: string; hint?: string }> = [
     { label: 'overview.active', value: `${active}`, hint: `${campaigns.length} ${t('overview.totalCampaigns')}` },

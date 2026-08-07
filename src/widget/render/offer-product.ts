@@ -76,10 +76,15 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
   let selection: WidgetVariant = defaultVariant(activeProduct);
   let countdownHandle: { stop: () => void } | null = null;
   let panelMounted = false;
+  let converted = false;
 
   const tab = createStickyTab(data.tabLabel, appearance, () => togglePanel());
   const panel = createPanel(shadow.root, data.headline, data.subtitle, () => {
     tab.setAttribute('aria-expanded', 'false');
+    if (converted) return;
+
+    markDismissed(campaign.id);
+    track(campaign.id, 'DISMISS');
   });
 
   shadow.container.appendChild(tab);
@@ -149,6 +154,7 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
     }
 
     track(campaign.id, 'ADD_TO_CART', selection.id, selection.offerPrice * activeProduct.quantity);
+    converted = true;
     cta.setState('success');
     revealCart();
   }
@@ -194,8 +200,6 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
   function togglePanel() {
     if (panel.isOpen()) {
       panel.close();
-      markDismissed(campaign.id);
-      track(campaign.id, 'DISMISS');
       return;
     }
 

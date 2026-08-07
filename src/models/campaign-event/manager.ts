@@ -12,8 +12,18 @@ export type IncomingEvent = {
   value?: number;
 };
 
+type Bucket = { impressions: number; opens: number; clicks: number; addToCarts: number; dismisses: number; revenue: number };
+
 function startOfUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function emptyBucket(): Bucket {
+  return { impressions: 0, opens: 0, clicks: 0, addToCarts: 0, dismisses: 0, revenue: 0 };
+}
+
+function hasValue(bucket: Bucket): boolean {
+  return Object.values(bucket).some((value) => value > 0);
 }
 
 export class CampaignEventManager {
@@ -21,6 +31,15 @@ export class CampaignEventManager {
     if (!events.length) return 0;
 
     const day = startOfUtcDay(new Date());
+    const sessionIds = Array.from(new Set(events.map((event) => event.sessionId)));
+    const campaignIds = Array.from(new Set(events.map((event) => event.campaignId)));
+
+    const alreadyCounted = await prisma.campaignEvent.findMany({
+      where: { sessionId: { in: sessionIds }, campaignId: { in: campaignIds }, createdAt: { gte: day } },
+      select: { sessionId: true, campaignId: true, type: true },
+    });
+
+    const counted = new Set(alreadyCounted.map((row) => `${row.sessionId}|${row.campaignId}|${row.type}`));
 
     await prisma.campaignEvent.createMany({
       data: events.map((event) => ({
@@ -34,15 +53,23 @@ export class CampaignEventManager {
       })),
     });
 
-    const buckets = new Map<string, { impressions: number; opens: number; clicks: number; addToCarts: number; dismisses: number; revenue: number }>();
+    const buckets = new Map<string, Bucket>();
     for (const event of events) {
-      const bucket = buckets.get(event.campaignId) ?? { impressions: 0, opens: 0, clicks: 0, addToCarts: 0, dismisses: 0, revenue: 0 };
-      bucket[STAT_FIELD_BY_EVENT[event.type]] += 1;
-      if (event.type === 'ADD_TO_CART' && typeof event.value === 'number') bucket.revenue += event.value;
+      const bucket = buckets.get(event.campaignId) ?? emptyBucket();
       buckets.set(event.campaignId, bucket);
+
+      if (event.type === 'ADD_TO_CART' && typeof event.value === 'number') bucket.revenue += event.value;
+
+      const key = `${event.sessionId}|${event.campaignId}|${event.type}`;
+      if (counted.has(key)) continue;
+
+      counted.add(key);
+      bucket[STAT_FIELD_BY_EVENT[event.type]] += 1;
     }
 
     for (const [campaignId, bucket] of buckets) {
+      if (!hasValue(bucket)) continue;
+
       await prisma.campaignStat.upsert({
         where: { campaignId_date: { campaignId, date: day } },
         update: {
