@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "pnpm build:widget && next dev",
-    "build": "pnpm build:widget && next build",
+    "build": "prisma generate && pnpm build:widget && next build",
     "start": "next start",
     "build:widget": "esbuild src/widget/index.ts --bundle --minify --format=iife --target=es2018 --outfile=public/rush.js",
     "dev:widget": "esbuild src/widget/index.ts --bundle --format=iife --target=es2018 --outfile=public/rush.js --watch",
