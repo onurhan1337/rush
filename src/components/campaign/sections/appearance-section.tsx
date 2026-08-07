@@ -51,6 +51,7 @@ export function AppearanceSection({ form }: { form: UseFormReturn<CampaignFormVa
   const autoOpen = form.watch('appearance.autoOpen');
   const accent = form.watch('appearance.accentColor') ?? '#0A0A0A';
   const secondary = form.watch('appearance.secondaryColor') ?? '#0A0A0A';
+  const salePrice = form.watch('appearance.salePriceColor') ?? '#4A0100';
   const radius = form.watch('appearance.radius') ?? 16;
   const tabRadius = form.watch('appearance.tabRadius') ?? 16;
   const icon = form.watch('appearance.icon');
@@ -96,6 +97,14 @@ export function AppearanceSection({ form }: { form: UseFormReturn<CampaignFormVa
           error={form.formState.errors.appearance?.secondaryColor?.message}
         >
           <ColorField value={secondary} onChange={(value) => form.setValue('appearance.secondaryColor', value, { shouldDirty: true })} />
+        </Field>
+
+        <Field
+          label={t('appearance.salePrice')}
+          hint={t('appearance.salePriceHint')}
+          error={form.formState.errors.appearance?.salePriceColor?.message}
+        >
+          <ColorField value={salePrice} onChange={(value) => form.setValue('appearance.salePriceColor', value, { shouldDirty: true })} />
         </Field>
       </div>
 

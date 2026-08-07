@@ -180,7 +180,8 @@ button {
 }
 .rush-prices { display: flex; align-items: baseline; gap: 8px; }
 .rush-old { font-size: 12px; color: #9CA3AF; text-decoration: line-through; }
-.rush-new { font-size: 15px; font-weight: 700; color: var(--rush-secondary-ink); }
+.rush-new { font-size: 15px; font-weight: 700; color: #0A0A0A; }
+.rush-prices[data-discounted="true"] .rush-new { color: var(--rush-sale); }
 
 .rush-nav-row {
   position: absolute;
@@ -357,6 +358,7 @@ export function applyAppearanceVars(host: HTMLElement, appearance: Appearance): 
     '--rush-secondary': secondaryColor,
     '--rush-secondary-hover': hover(secondaryColor),
     '--rush-secondary-ink': shade(secondaryColor, 0.05),
+    '--rush-sale': appearance.salePriceColor,
     '--rush-on-secondary': readableOn(secondaryColor),
     '--rush-sheen': onAccent === '#FFFFFF' ? 'rgba(255,255,255,.28)' : 'rgba(0,0,0,.12)',
     '--rush-radius-tab': `${appearance.tabRadius}px`,

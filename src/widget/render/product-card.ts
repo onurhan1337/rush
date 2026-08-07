@@ -72,7 +72,9 @@ export function createProductCard(product: WidgetProduct, variant: WidgetVariant
 
   const update = (next: WidgetVariant) => {
     media.update(next);
-    oldPrice.textContent = next.sellPrice > next.offerPrice ? formatMoney(next.sellPrice, product.currency) : '';
+    const discounted = next.sellPrice > next.offerPrice;
+    prices.setAttribute('data-discounted', discounted ? 'true' : 'false');
+    oldPrice.textContent = discounted ? formatMoney(next.sellPrice, product.currency) : '';
     newPrice.textContent = formatMoney(next.offerPrice, product.currency);
   };
 

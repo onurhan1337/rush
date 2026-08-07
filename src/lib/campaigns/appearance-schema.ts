@@ -20,6 +20,7 @@ export const appearanceSchema = z.object({
   mount: mountTargetSchema.default(DEFAULT_APPEARANCE.mount),
   accentColor: hexColor.default(DEFAULT_APPEARANCE.accentColor),
   secondaryColor: hexColor.default(DEFAULT_APPEARANCE.secondaryColor),
+  salePriceColor: hexColor.default(DEFAULT_APPEARANCE.salePriceColor),
   radius: radiusValue.default(DEFAULT_APPEARANCE.radius),
   tabRadius: radiusValue.default(DEFAULT_APPEARANCE.tabRadius),
   icon: z.enum(APPEARANCE_ICONS).default(DEFAULT_APPEARANCE.icon),

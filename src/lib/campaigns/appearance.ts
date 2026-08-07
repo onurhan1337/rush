@@ -18,6 +18,7 @@ export type Appearance = {
   mount: MountTarget;
   accentColor: string;
   secondaryColor: string;
+  salePriceColor: string;
   radius: Radius;
   tabRadius: Radius;
   icon: AppearanceIcon;
@@ -30,6 +31,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   mount: { mode: 'fixed', side: 'left' },
   accentColor: '#0A0A0A',
   secondaryColor: '#0A0A0A',
+  salePriceColor: '#4A0100',
   radius: 16,
   tabRadius: 16,
   icon: 'clock',
