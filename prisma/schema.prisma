@@ -27,3 +27,75 @@ model AuthToken {
   refreshToken    String
   scope           String?
 }
+
+model Campaign {
+  id              String    @id
+  merchantId      String
+  authorizedAppId String
+  type            String
+  name            String
+  status          String    @default("DRAFT")
+  startsAt        DateTime?
+  endsAt          DateTime?
+  config          String    @default("{}")
+  rules           String    @default("{\"match\":\"all\",\"conditions\":[]}")
+  appearance      String    @default("{}")
+  ikasCampaignId  String?
+  ikasCampaignIds String    @default("[]")
+  priority        Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deleted         Boolean   @default(false)
+
+  @@index([authorizedAppId, status])
+}
+
+model CampaignEvent {
+  id              String   @id
+  campaignId      String
+  authorizedAppId String
+  type            String
+  sessionId       String
+  variantId       String?
+  value           Float?
+  createdAt       DateTime @default(now())
+
+  @@index([campaignId, createdAt])
+  @@index([createdAt])
+}
+
+model CampaignStat {
+  id          String   @id
+  campaignId  String
+  date        DateTime
+  impressions Int      @default(0)
+  opens       Int      @default(0)
+  clicks      Int      @default(0)
+  addToCarts  Int      @default(0)
+  dismisses   Int      @default(0)
+  revenue     Float    @default(0)
+
+  @@unique([campaignId, date])
+}
+
+model StorefrontScript {
+  id              String   @id
+  authorizedAppId String
+  storefrontId    String
+  scriptId        String
+  version         String   @default("")
+  installedAt     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deleted         Boolean  @default(false)
+
+  @@unique([authorizedAppId, storefrontId])
+}
+
+model MerchantSettings {
+  authorizedAppId   String   @id
+  merchantId        String
+  publicKey         String   @unique
+  defaultAppearance String   @default("{}")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
