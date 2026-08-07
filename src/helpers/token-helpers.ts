@@ -92,6 +92,8 @@ export class TokenHelpers {
    * @remarks
    * - Expects 'token', 'redirectUrl', and 'authorizedAppId' parameters in the URL
    * - Stores both the token and authorized app ID in session storage
+   * - Inside the Admin iframe it routes to /dashboard instead of redirecting, which
+   *   would otherwise nest a second Admin in the frame and loop the install
    * - Uses window.location.replace() for immediate redirection without history entry
    * - Falls back to authorization page if required parameters are missing
    */
@@ -115,10 +117,19 @@ export class TokenHelpers {
       
       // Store authorized app ID separately for reference
       sessionStorage.setItem('authorizedAppId', authorizedAppId);
-      
-      // Redirect to the specified URL (typically back to the app)
+
+      // Inside the Admin iframe the app is already where it belongs. Navigating to
+      // the Admin URL here would load a second Admin *inside this frame*, which
+      // re-opens the app, which authorizes again: an infinite install loop. The
+      // token is stored, so just show the dashboard in place.
+      if (window.self !== window.top) {
+        router.replace('/dashboard');
+        return;
+      }
+
+      // Top-level flow (merchant onboarded from our own site): hand them back to Admin.
       window.location.replace(redirectUrl);
-      
+
       // Throw to indicate successful redirect (prevents further execution)
       throw 'redirectUrl-called';
     }
