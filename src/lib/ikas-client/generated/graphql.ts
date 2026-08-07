@@ -286,6 +286,24 @@ export interface ListStorefrontQuery {
   listStorefront: ListStorefrontQueryData;
 }
 
+export type ListVariantTypeQueryVariables = {}
+
+export type ListVariantTypeQueryData = Array<{
+  id: string;
+  name: string;
+  selectionType: VariantSelectionTypeEnum;
+  values: Array<{
+  id: string;
+  name: string;
+  colorCode?: string;
+  thumbnailImageId?: string;
+}>;
+}>
+
+export interface ListVariantTypeQuery {
+  listVariantType: ListVariantTypeQueryData;
+}
+
 export type SearchProductQueryVariables = {
   search?: string;
   pagination?: PaginationInput;
@@ -549,6 +567,25 @@ export class GeneratedQueries {
   }
 `;
     return this.client.query<Partial<ListStorefrontQuery>>({ query });
+  }
+
+  async listVariantType(): Promise<APIResult<Partial<ListVariantTypeQuery>>> {
+    const query = `
+  query listVariantType {
+    listVariantType {
+      id
+      name
+      selectionType
+      values {
+        id
+        name
+        colorCode
+        thumbnailImageId
+      }
+    }
+  }
+`;
+    return this.client.query<Partial<ListVariantTypeQuery>>({ query });
   }
 
   async searchProduct(variables: SearchProductQueryVariables): Promise<APIResult<Partial<SearchProductQuery>>> {

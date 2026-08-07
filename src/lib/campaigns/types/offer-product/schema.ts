@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import { DEFAULT_IKAS_SETTINGS, ikasSettingsSchema } from '@/lib/campaigns/ikas-settings';
+
+export const AFTER_ADD_TO_CART = ['drawer', 'cart', 'stay'] as const;
+
+export type AfterAddToCart = (typeof AFTER_ADD_TO_CART)[number];
 
 export const countdownSchema = z
   .object({
@@ -17,12 +22,6 @@ export const offerProductItemSchema = z.object({
   quantity: z.number().int().min(1).max(50).default(1),
 });
 
-export const VARIANT_STYLES = ['chip', 'swatch', 'image', 'list'] as const;
-export const VARIANT_SELECTIONS = ['single', 'multi'] as const;
-
-export type VariantStyle = (typeof VARIANT_STYLES)[number];
-export type VariantSelection = (typeof VARIANT_SELECTIONS)[number];
-
 const offerProductShape = z.object({
   items: z.array(offerProductItemSchema).min(1, 'En az bir ürün seçin'),
   countdown: countdownSchema,
@@ -30,12 +29,12 @@ const offerProductShape = z.object({
   subtitle: z.string().max(120).default(''),
   ctaLabel: z.string().min(1).max(30).default('Sepete ekle'),
   tabLabel: z.string().min(1).max(24).default('Fırsat ürün'),
-  variantStyle: z.enum(VARIANT_STYLES).default('chip'),
-  variantSelection: z.enum(VARIANT_SELECTIONS).default('single'),
+  currencySymbol: z.string().max(6).default(''),
+  afterAddToCart: z.enum(AFTER_ADD_TO_CART).default('drawer'),
+  cartTriggerSelector: z.string().max(200).default(''),
+  ikas: ikasSettingsSchema.default(DEFAULT_IKAS_SETTINGS),
 });
 
-// Configs saved before multi-product support keep a single productId/variantIds pair at the
-// root — lift them into items so existing campaigns keep opening and publishing.
 function migrateLegacyConfig(value: unknown): unknown {
   if (!value || typeof value !== 'object') return value;
 
@@ -61,6 +60,8 @@ export const OFFER_PRODUCT_DEFAULT_CONFIG: OfferProductConfig = {
   subtitle: 'Sınırlı süre için özel fiyat.',
   ctaLabel: 'Sepete ekle',
   tabLabel: 'Fırsat ürün',
-  variantStyle: 'chip',
-  variantSelection: 'single',
+  currencySymbol: '',
+  afterAddToCart: 'drawer',
+  cartTriggerSelector: '',
+  ikas: DEFAULT_IKAS_SETTINGS,
 };

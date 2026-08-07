@@ -1,5 +1,6 @@
 import type { WidgetCampaign, WidgetProduct, WidgetVariant } from '@/lib/campaigns/widget-types';
 import { addToCart } from '../context/ikas';
+import { goToCart, openCartDrawer } from '../context/cart-drawer';
 import { track } from '../transport/events';
 import { el } from './dom';
 import { createShadowHost } from './shadow-host';
@@ -31,7 +32,7 @@ function markDismissed(campaignId: string): void {
   try {
     localStorage.setItem(DISMISS_PREFIX + campaignId, today());
   } catch {
-    // storage unavailable — dismissal simply does not persist
+    return;
   }
 }
 
@@ -72,7 +73,7 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
 
   let activeIndex = 0;
   let activeProduct = data.products[0];
-  let selection: WidgetVariant[] = [defaultVariant(activeProduct)];
+  let selection: WidgetVariant = defaultVariant(activeProduct);
   let countdownHandle: { stop: () => void } | null = null;
   let panelMounted = false;
 
@@ -90,7 +91,7 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
 
   function syncCtaState() {
     if (activeProduct.hasOptions) return cta.setState('redirect');
-    if (!selection.some((variant) => variant.inStock)) return cta.setState('soldout');
+    if (!selection.inStock) return cta.setState('soldout');
     cta.setState('idle');
   }
 
@@ -99,35 +100,34 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
 
     activeIndex = index;
     activeProduct = data.products[index];
-    selection = [defaultVariant(activeProduct)];
+    selection = defaultVariant(activeProduct);
     stage.innerHTML = '';
 
+    const card = createProductCard(activeProduct, selection);
     if (switcher) {
-      switcher.sync(activeIndex);
-      stage.appendChild(switcher.node);
+      card.node.setAttribute('data-paged', 'true');
+      card.node.appendChild(switcher.node);
     }
-
-    const card = createProductCard(activeProduct, selection[0]);
     stage.appendChild(card.node);
 
     const picker = createVariantPicker({
       variants: activeProduct.variants,
-      style: data.variantStyle,
-      selection: data.variantSelection,
-      currencySymbol: activeProduct.currencySymbol,
-      onChange: (variants) => {
-        selection = variants;
-        card.update(variants[0]);
+      types: activeProduct.variantTypes,
+      initial: selection,
+      onChange: (variant) => {
+        selection = variant;
+        card.update(variant);
         syncCtaState();
       },
     });
     if (picker) stage.appendChild(picker.node);
+    if (switcher) switcher.sync(activeIndex);
 
     syncCtaState();
   }
 
   async function handleCta() {
-    track(campaign.id, 'CLICK', selection[0]?.id);
+    track(campaign.id, 'CLICK', selection.id);
 
     if (activeProduct.hasOptions) {
       window.location.href = activeProduct.url;
@@ -136,23 +136,37 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
 
     cta.setState('loading');
 
-    for (const variant of selection) {
-      const result = await addToCart(variant.id, activeProduct.quantity);
+    const result = await addToCart(selection.id, activeProduct.quantity);
 
-      if (result.unavailable) {
-        window.location.href = activeProduct.url;
-        return;
-      }
-
-      if (!result.success) {
-        cta.setState('error', result.error || 'Ürün sepete eklenemedi.');
-        return;
-      }
-
-      track(campaign.id, 'ADD_TO_CART', variant.id, variant.offerPrice * activeProduct.quantity);
+    if (result.unavailable) {
+      window.location.href = activeProduct.url;
+      return;
     }
 
+    if (!result.success) {
+      cta.setState('error', result.error || 'Ürün sepete eklenemedi.');
+      return;
+    }
+
+    track(campaign.id, 'ADD_TO_CART', selection.id, selection.offerPrice * activeProduct.quantity);
     cta.setState('success');
+    revealCart();
+  }
+
+  function revealCart() {
+    if (data.afterAddToCart === 'cart') {
+      setTimeout(() => goToCart(), 600);
+      return;
+    }
+
+    if (data.afterAddToCart === 'drawer') {
+      setTimeout(() => {
+        panel.close();
+        openCartDrawer(data.cartTriggerSelector || undefined);
+      }, 700);
+      return;
+    }
+
     setTimeout(() => panel.close(), 2000);
   }
 

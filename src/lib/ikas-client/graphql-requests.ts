@@ -38,6 +38,22 @@ export const LIST_STOREFRONT = gql`
   }
 `;
 
+export const LIST_VARIANT_TYPE = gql`
+  query listVariantType {
+    listVariantType {
+      id
+      name
+      selectionType
+      values {
+        id
+        name
+        colorCode
+        thumbnailImageId
+      }
+    }
+  }
+`;
+
 export const SEARCH_PRODUCT = gql`
   query searchProduct($search: String, $pagination: PaginationInput) {
     listProduct(search: $search, pagination: $pagination) {

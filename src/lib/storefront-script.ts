@@ -12,6 +12,7 @@ export type StorefrontInfo = {
   id: string;
   name: string;
   salesChannelId: string;
+  currencyCode?: string;
   currencySymbol?: string;
   domain?: string;
 };
@@ -44,6 +45,7 @@ export async function listStorefronts(ikas: IkasClient): Promise<StorefrontInfo[
       id: storefront.id,
       name: storefront.name,
       salesChannelId: storefront.salesChannelId,
+      currencyCode: routing?.currencyCode ?? undefined,
       currencySymbol: routing?.currencySymbol ?? undefined,
       domain: routing?.domain ?? undefined,
     };

@@ -1,13 +1,15 @@
 import type { IkasMedia } from '@/lib/ikas-image';
+import type { Currency } from '@/lib/money';
 import type { Appearance } from './appearance';
 import type { RuleSet } from './rules/types';
-import type { VariantSelection, VariantStyle } from './types/offer-product/schema';
+import type { AfterAddToCart } from './types/offer-product/schema';
+import type { ResolvedVariantType, VariantOption } from './variant-types';
 
 export type WidgetVariant = {
   id: string;
   label: string;
+  options: VariantOption[];
   media?: IkasMedia;
-  swatchColor?: string;
   sellPrice: number;
   offerPrice: number;
   inStock: boolean;
@@ -19,7 +21,8 @@ export type WidgetProduct = {
   url: string;
   hasOptions: boolean;
   quantity: number;
-  currencySymbol: string;
+  currency: Currency;
+  variantTypes: ResolvedVariantType[];
   variants: WidgetVariant[];
 };
 
@@ -34,8 +37,8 @@ export type OfferProductWidgetData = {
   subtitle: string;
   ctaLabel: string;
   tabLabel: string;
-  variantStyle: VariantStyle;
-  variantSelection: VariantSelection;
+  afterAddToCart: AfterAddToCart;
+  cartTriggerSelector: string;
   countdown: WidgetCountdown;
   products: WidgetProduct[];
 };

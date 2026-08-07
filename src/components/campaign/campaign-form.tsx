@@ -17,6 +17,7 @@ import { AppearanceSection } from './sections/appearance-section';
 import { BasicsSection } from './sections/basics-section';
 import { ContentSection } from './sections/content-section';
 import { CountdownSection } from './sections/countdown-section';
+import { IntegrationSection } from './sections/integration-section';
 import { PricingSection } from './sections/pricing-section';
 import { ProductSection } from './sections/product-section';
 import { RulesSection } from './sections/rules-section';
@@ -106,6 +107,7 @@ export function CampaignForm({ campaign: initialCampaign, token }: { campaign: C
           <CountdownSection form={form} />
           <ContentSection form={form} />
           <AppearanceSection form={form} />
+          <IntegrationSection form={form} />
           <RulesSection form={form} campaignType={campaign.type} />
         </form>
 

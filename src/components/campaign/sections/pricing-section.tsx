@@ -1,11 +1,13 @@
 'use client';
 
 import type { UseFormReturn } from 'react-hook-form';
-import { useT } from '@/lib/i18n';
+import { Input } from '@/components/ui/input';
+import { useIntlLocale, useT } from '@/lib/i18n';
+import { currencySymbol, formatMoney } from '@/lib/money';
 import type { ResolvedProduct } from '@/lib/campaigns/product';
 import type { OfferProductItem } from '@/lib/campaigns/types/offer-product/schema';
 import type { CampaignFormValues } from '../types';
-import { Section } from './section';
+import { Field, Section } from './section';
 
 type Summary = { state: 'mixed' } | { state: 'invalid' } | { state: 'ok'; discount: number; ratio: number };
 
@@ -25,7 +27,9 @@ function summarize(product: ResolvedProduct, item: OfferProductItem): Summary | 
 
 export function PricingSection({ form, products }: { form: UseFormReturn<CampaignFormValues>; products: Record<string, ResolvedProduct> }) {
   const t = useT();
+  const locale = useIntlLocale();
   const items: OfferProductItem[] = form.watch('config.items') ?? [];
+  const override = form.watch('config.currencySymbol');
 
   const rows = items
     .map((item) => {
@@ -36,26 +40,38 @@ export function PricingSection({ form, products }: { form: UseFormReturn<Campaig
     })
     .filter((row): row is { product: ResolvedProduct; item: OfferProductItem; summary: Summary } => !!row);
 
-  if (!rows.length) return null;
+  const storeCurrency = Object.values(products).find((product) => product.currencyCode || product.currencySymbol);
+  const detected = currencySymbol({ code: storeCurrency?.currencyCode, symbol: storeCurrency?.currencySymbol });
 
   return (
     <Section title={t('pricing.title')} description={t('pricing.description')}>
-      <ul className="divide-y rounded-md border bg-muted/40 text-xs">
-        {rows.map(({ product, item, summary }) => (
-          <li key={product.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <span className="truncate font-medium">{product.name}</span>
-            {summary.state === 'mixed' ? (
-              <span className="shrink-0 text-destructive">{t('pricing.mixedPrices')}</span>
-            ) : summary.state === 'invalid' ? (
-              <span className="shrink-0 text-destructive">{t('pricing.invalidPrice')}</span>
-            ) : (
-              <span className="shrink-0 tabular-nums text-muted-foreground">
-                −{summary.discount.toFixed(2)} {product.currencySymbol} (%{summary.ratio}) · {item.quantity}×
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
+      <Field
+        label={t('pricing.currency')}
+        hint={detected ? `${t('pricing.currencyDetected')}: ${detected}` : undefined}
+        error={form.formState.errors.config?.currencySymbol?.message}
+      >
+        <Input className="w-32" placeholder={detected || '₺'} {...form.register('config.currencySymbol')} />
+      </Field>
+
+      {rows.length ? (
+        <ul className="divide-y rounded-md border bg-muted/40 text-xs">
+          {rows.map(({ product, item, summary }) => (
+            <li key={product.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <span className="truncate font-medium">{product.name}</span>
+              {summary.state === 'mixed' ? (
+                <span className="shrink-0 text-destructive">{t('pricing.mixedPrices')}</span>
+              ) : summary.state === 'invalid' ? (
+                <span className="shrink-0 text-destructive">{t('pricing.invalidPrice')}</span>
+              ) : (
+                <span className="shrink-0 tabular-nums text-muted-foreground">
+                  −{formatMoney(summary.discount, { code: product.currencyCode, symbol: override || undefined }, locale)} (%{summary.ratio}) ·{' '}
+                  {item.quantity}×
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </Section>
   );
 }

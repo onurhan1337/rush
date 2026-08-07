@@ -1,3 +1,5 @@
+import { formatMoney as format, type Currency } from '@/lib/money';
+
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   className?: string,
@@ -9,8 +11,14 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-export function formatMoney(amount: number, currencySymbol: string): string {
-  const rounded = Math.round(amount * 100) / 100;
-  const formatted = rounded.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return currencySymbol ? `${formatted} ${currencySymbol}` : formatted;
+export function storefrontLocale(): string {
+  return document.documentElement.getAttribute('lang') || navigator.language || 'tr-TR';
+}
+
+export function upperCase(value: string): string {
+  return value.toLocaleUpperCase(storefrontLocale());
+}
+
+export function formatMoney(amount: number, currency: Currency): string {
+  return format(amount, currency, storefrontLocale());
 }

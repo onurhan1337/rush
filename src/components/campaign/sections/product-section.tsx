@@ -7,16 +7,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiRequests } from '@/lib/api-requests';
-import { useT } from '@/lib/i18n';
+import { useIntlLocale, useT } from '@/lib/i18n';
+import { formatMoney } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import type { ResolvedProduct } from '@/lib/campaigns/product';
 import type { OfferProductItem } from '@/lib/campaigns/types/offer-product/schema';
 import type { CampaignFormValues } from '../types';
 import { Field, Section } from './section';
-
-function formatPrice(amount: number, symbol?: string): string {
-  return `${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${symbol ? ` ${symbol}` : ''}`;
-}
 
 type Props = {
   form: UseFormReturn<CampaignFormValues>;
@@ -27,6 +24,7 @@ type Props = {
 
 export function ProductSection({ form, token, products, onProductLoaded }: Props) {
   const t = useT();
+  const locale = useIntlLocale();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ResolvedProduct[]>([]);
   const [loading, setLoading] = useState(false);
@@ -216,7 +214,7 @@ export function ProductSection({ form, token, products, onProductLoaded }: Props
                           </span>
 
                           <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                            {variant.inStock ? formatPrice(variant.sellPrice, product.currencySymbol) : t('product.outOfStock')}
+                            {variant.inStock ? formatMoney(variant.sellPrice, { code: product.currencyCode, symbol: product.currencyCode ? undefined : product.currencySymbol }, locale) : t('product.outOfStock')}
                           </span>
                         </button>
                       </li>

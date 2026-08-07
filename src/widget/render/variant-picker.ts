@@ -1,96 +1,110 @@
-import type { VariantSelection, VariantStyle } from '@/lib/campaigns/types/offer-product/schema';
+import type { ResolvedVariantType, ResolvedVariantValue } from '@/lib/campaigns/variant-types';
 import type { WidgetVariant } from '@/lib/campaigns/widget-types';
-import { el, formatMoney } from './dom';
+import { el } from './dom';
 
 export type VariantPicker = {
   node: HTMLElement;
-  selected: () => WidgetVariant[];
+  selected: () => WidgetVariant;
 };
 
 type Options = {
   variants: WidgetVariant[];
-  style: VariantStyle;
-  selection: VariantSelection;
-  currencySymbol: string;
-  onChange: (selected: WidgetVariant[]) => void;
+  types: ResolvedVariantType[];
+  initial: WidgetVariant;
+  onChange: (variant: WidgetVariant) => void;
 };
 
-function paintMedia(node: HTMLElement, variant: WidgetVariant): void {
-  if (variant.media && !variant.media.isVideo) node.style.backgroundImage = `url("${variant.media.url}")`;
-  else if (variant.swatchColor) node.style.background = variant.swatchColor;
+type Choice = Record<string, string>;
+
+function choiceOf(variant: WidgetVariant): Choice {
+  const choice: Choice = {};
+  for (const option of variant.options) choice[option.typeId] = option.valueId;
+  return choice;
 }
 
-function buttonContent(button: HTMLButtonElement, variant: WidgetVariant, style: VariantStyle, currencySymbol: string): void {
-  if (style === 'swatch') {
+function matches(variant: WidgetVariant, choice: Choice): boolean {
+  return Object.keys(choice).every((typeId) => variant.options.some((option) => option.typeId === typeId && option.valueId === choice[typeId]));
+}
+
+function findVariant(variants: WidgetVariant[], choice: Choice): WidgetVariant | undefined {
+  const candidates = variants.filter((variant) => matches(variant, choice));
+  return candidates.find((variant) => variant.inStock) ?? candidates[0];
+}
+
+function selectValue(variants: WidgetVariant[], choice: Choice, typeId: string, valueId: string) {
+  const next = { ...choice, [typeId]: valueId };
+  const direct = findVariant(variants, next);
+  if (direct) return { choice: next, variant: direct };
+
+  const fallback = findVariant(variants, { [typeId]: valueId });
+  return fallback ? { choice: choiceOf(fallback), variant: fallback } : null;
+}
+
+function paintSwatch(node: HTMLElement, value: ResolvedVariantValue): void {
+  if (value.media && !value.media.isVideo) node.style.backgroundImage = `url("${value.media.url}")`;
+  else if (value.colorCode) node.style.background = value.colorCode;
+  else node.setAttribute('data-blank', 'true');
+}
+
+function createValueButton(type: ResolvedVariantType, value: ResolvedVariantValue): HTMLButtonElement {
+  const button = el('button', 'rush-variant');
+  button.type = 'button';
+  button.setAttribute('aria-label', `${type.name}: ${value.name}`);
+
+  if (type.selectionType === 'color') {
     const dot = el('span', 'rush-variant-dot');
-    if (variant.swatchColor) dot.style.background = variant.swatchColor;
-    else paintMedia(dot, variant);
+    paintSwatch(dot, value);
     button.appendChild(dot);
-    button.appendChild(el('span', 'rush-variant-label', variant.label));
-    return;
   }
 
-  if (style === 'image') {
-    const thumb = el('span', 'rush-variant-thumb');
-    paintMedia(thumb, variant);
-    button.appendChild(thumb);
-    button.appendChild(el('span', 'rush-variant-label', variant.label));
-    return;
-  }
-
-  if (style === 'list') {
-    button.appendChild(el('span', 'rush-variant-mark'));
-    button.appendChild(el('span', 'rush-variant-label', variant.label));
-    button.appendChild(el('span', 'rush-variant-price', formatMoney(variant.offerPrice, currencySymbol)));
-    return;
-  }
-
-  button.appendChild(el('span', 'rush-variant-label', variant.label));
+  button.appendChild(el('span', 'rush-variant-label', value.name));
+  return button;
 }
 
-export function createVariantPicker({ variants, style, selection, currencySymbol, onChange }: Options): VariantPicker | null {
-  if (variants.length < 2) return null;
+export function createVariantPicker({ variants, types, initial, onChange }: Options): VariantPicker | null {
+  if (variants.length < 2 || !types.length) return null;
 
-  const node = el('div', 'rush-variants');
-  node.setAttribute('data-style', style);
-  node.setAttribute('data-selection', selection);
-  node.setAttribute('role', 'group');
-  node.setAttribute('aria-label', 'Varyant seçimi');
+  const node = el('div', 'rush-variant-groups');
+  let choice = choiceOf(initial);
+  let current = initial;
 
-  const entries: Array<{ button: HTMLButtonElement; variant: WidgetVariant }> = [];
-  const chosen = new Set<string>();
-  chosen.add((variants.find((variant) => variant.inStock) ?? variants[0]).id);
-
-  const selected = () => variants.filter((variant) => chosen.has(variant.id));
+  const entries: Array<{ button: HTMLButtonElement; typeId: string; valueId: string }> = [];
 
   const sync = () => {
-    for (const entry of entries) entry.button.setAttribute('aria-pressed', chosen.has(entry.variant.id) ? 'true' : 'false');
-    onChange(selected());
-  };
-
-  const toggle = (variant: WidgetVariant) => {
-    if (selection === 'multi') {
-      if (!chosen.has(variant.id)) chosen.add(variant.id);
-      else if (chosen.size > 1) chosen.delete(variant.id);
-      else return;
-    } else {
-      chosen.clear();
-      chosen.add(variant.id);
+    for (const entry of entries) {
+      entry.button.setAttribute('aria-pressed', choice[entry.typeId] === entry.valueId ? 'true' : 'false');
     }
-    sync();
   };
 
-  for (const variant of variants) {
-    const button = el('button', 'rush-variant');
-    button.type = 'button';
-    button.setAttribute('aria-label', variant.label);
-    button.setAttribute('aria-pressed', chosen.has(variant.id) ? 'true' : 'false');
-    if (!variant.inStock) button.disabled = true;
-    buttonContent(button, variant, style, currencySymbol);
-    button.addEventListener('click', () => toggle(variant));
-    entries.push({ button, variant });
-    node.appendChild(button);
+  for (const type of types) {
+    const group = el('div', 'rush-variant-group');
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', type.name);
+    group.setAttribute('data-selection', type.selectionType);
+
+    group.appendChild(el('span', 'rush-variant-group-label', type.name));
+
+    const list = el('div', 'rush-variants');
+    for (const value of type.values) {
+      const button = createValueButton(type, value);
+      button.disabled = !variants.some((variant) => matches(variant, { [type.id]: value.id }) && variant.inStock);
+      button.addEventListener('click', () => {
+        const next = selectValue(variants, choice, type.id, value.id);
+        if (!next) return;
+        choice = next.choice;
+        current = next.variant;
+        sync();
+        onChange(next.variant);
+      });
+      entries.push({ button, typeId: type.id, valueId: value.id });
+      list.appendChild(button);
+    }
+
+    group.appendChild(list);
+    node.appendChild(group);
   }
 
-  return { node, selected };
+  sync();
+
+  return { node, selected: () => current };
 }

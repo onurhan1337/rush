@@ -8,6 +8,7 @@ import {
 import type { Campaign } from '@/models/campaign';
 import type { ResolvedProduct, ResolvedVariant } from '@/lib/campaigns/product';
 import type { CartContainsProductRule, CartTotalRule } from '@/lib/campaigns/rules/types';
+import type { IkasSettings } from '@/lib/campaigns/ikas-settings';
 import type { OfferProductConfig, OfferProductItem } from './schema';
 
 export type IkasCampaignMapping = { ok: true; inputs: CreateCampaignInput[] } | { ok: false; error: string };
@@ -29,6 +30,7 @@ function itemInput(
   item: OfferProductItem,
   variants: ResolvedVariant[],
   title: string,
+  settings: IkasSettings,
   salesChannelIds: string[],
 ): { ok: true; input: CreateCampaignInput } | { ok: false; error: string } {
   const cartContains = campaign.rules.conditions.find((rule): rule is CartContainsProductRule => rule.kind === 'cart_contains_product');
@@ -36,10 +38,14 @@ function itemInput(
 
   const base = {
     title,
-    applicablePrice: CampaignApplicablePriceEnum.SELL_PRICE,
-    canCombineWithOtherCampaigns: false,
+    applicablePrice:
+      settings.applicablePrice === 'DISCOUNT_PRICE' ? CampaignApplicablePriceEnum.DISCOUNT_PRICE : CampaignApplicablePriceEnum.SELL_PRICE,
+    canCombineWithOtherCampaigns: settings.canCombineWithOtherCampaigns,
+    includeDiscountedProducts: settings.includeDiscountedProducts,
+    isFreeShipping: settings.isFreeShipping,
+    usageLimit: settings.usageLimit,
+    usageLimitPerCustomer: settings.usageLimitPerCustomer,
     hasCoupon: false,
-    includeDiscountedProducts: true,
     salesChannelIds: salesChannelIds.length ? salesChannelIds : undefined,
     dateRange: dateRange(campaign),
   };
@@ -102,8 +108,6 @@ function itemInput(
   };
 }
 
-// Every product gets its own ikas campaign: one fixed-amount discount cannot express
-// different offer prices across products.
 export function mapOfferProductToIkasCampaign(campaign: Campaign, config: OfferProductConfig, context: MappingContext): IkasCampaignMapping {
   const byId = new Map(context.products.map((product) => [product.id, product]));
   const inputs: CreateCampaignInput[] = [];
@@ -116,7 +120,7 @@ export function mapOfferProductToIkasCampaign(campaign: Campaign, config: OfferP
     if (!variants.length) return { ok: false, error: `${product.name}: seçili varyant bulunamadı` };
 
     const title = config.items.length > 1 ? `Rush — ${campaign.name} — ${product.name}` : `Rush — ${campaign.name}`;
-    const mapped = itemInput(campaign, item, variants, title, context.salesChannelIds);
+    const mapped = itemInput(campaign, item, variants, title, config.ikas, context.salesChannelIds);
     if (!mapped.ok) return mapped;
 
     inputs.push(mapped.input);

@@ -1,4 +1,4 @@
-import { el } from './dom';
+import { el, upperCase } from './dom';
 
 export type CtaState = 'idle' | 'loading' | 'success' | 'error' | 'soldout' | 'redirect';
 
@@ -16,7 +16,7 @@ const LABELS: Partial<Record<CtaState, string>> = {
 
 export function createCta(label: string, onClick: () => void): Cta {
   const node = el('div');
-  const button = el('button', 'rush-cta', label);
+  const button = el('button', 'rush-cta');
   button.type = 'button';
   button.addEventListener('click', onClick);
 
@@ -41,7 +41,7 @@ export function createCta(label: string, onClick: () => void): Cta {
       return;
     }
 
-    button.textContent = LABELS[state] ?? label;
+    button.textContent = upperCase(LABELS[state] ?? label);
 
     if (state === 'error' && message) {
       error.textContent = message;

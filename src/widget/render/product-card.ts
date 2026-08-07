@@ -72,8 +72,8 @@ export function createProductCard(product: WidgetProduct, variant: WidgetVariant
 
   const update = (next: WidgetVariant) => {
     media.update(next);
-    oldPrice.textContent = next.sellPrice > next.offerPrice ? formatMoney(next.sellPrice, product.currencySymbol) : '';
-    newPrice.textContent = formatMoney(next.offerPrice, product.currencySymbol);
+    oldPrice.textContent = next.sellPrice > next.offerPrice ? formatMoney(next.sellPrice, product.currency) : '';
+    newPrice.textContent = formatMoney(next.offerPrice, product.currency);
   };
 
   update(variant);

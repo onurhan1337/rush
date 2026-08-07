@@ -1,5 +1,6 @@
 import { buildMedia, type IkasMedia } from '@/lib/ikas-image';
-import { swatchColor } from './swatch';
+import type { Currency } from '@/lib/money';
+import { resolveVariantTypes, type ResolvedVariantType, type VariantOption, type VariantTypeCatalog } from './variant-types';
 import type { SearchProductQueryData } from '@/lib/ikas-client/generated/graphql';
 
 type RawProduct = SearchProductQueryData['data'][number];
@@ -8,8 +9,8 @@ type RawVariant = RawProduct['variants'][number];
 export type ResolvedVariant = {
   id: string;
   label: string;
+  options: VariantOption[];
   media?: IkasMedia;
-  swatchColor?: string;
   sellPrice: number;
   discountPrice?: number;
   stockCount: number;
@@ -27,6 +28,7 @@ export type ResolvedProduct = {
   hasOptions: boolean;
   currencyCode?: string;
   currencySymbol?: string;
+  variantTypes: ResolvedVariantType[];
   variants: ResolvedVariant[];
 };
 
@@ -35,9 +37,17 @@ function pickPrice(variant: RawVariant) {
   return prices.find((price) => !price.priceListId) ?? prices[0];
 }
 
-function variantLabel(variant: RawVariant, fallback: string): string {
-  const values = variant.variantValues ?? [];
-  if (values.length) return values.map((value) => value.variantValueName).join(' / ');
+function variantOptions(variant: RawVariant): VariantOption[] {
+  return (variant.variantValues ?? []).map((value) => ({
+    typeId: value.variantTypeId,
+    typeName: value.variantTypeName,
+    valueId: value.variantValueId,
+    valueName: value.variantValueName,
+  }));
+}
+
+function variantLabel(options: VariantOption[], variant: RawVariant, fallback: string): string {
+  if (options.length) return options.map((option) => option.valueName).join(' / ');
   return variant.sku || fallback;
 }
 
@@ -52,16 +62,21 @@ function stockCount(variant: RawVariant): number {
   return (variant.stocks ?? []).reduce((total, stock) => total + (stock.stockCount ?? 0), 0);
 }
 
-export function resolveProduct(raw: RawProduct, merchantId: string): ResolvedProduct {
+export function resolveProduct(
+  raw: RawProduct,
+  merchantId: string,
+  catalog: VariantTypeCatalog,
+  fallbackCurrency: Currency = {},
+): ResolvedProduct {
   const variants: ResolvedVariant[] = (raw.variants ?? []).map((variant) => {
     const price = pickPrice(variant);
     const count = stockCount(variant);
-    const label = variantLabel(variant, raw.name);
+    const options = variantOptions(variant);
     return {
       id: variant.id,
-      label,
+      label: variantLabel(options, variant, raw.name),
+      options,
       media: variantMedia(variant, merchantId),
-      swatchColor: swatchColor(label),
       sellPrice: price?.sellPrice ?? 0,
       discountPrice: price?.discountPrice ?? undefined,
       stockCount: count,
@@ -85,8 +100,9 @@ export function resolveProduct(raw: RawProduct, merchantId: string): ResolvedPro
     name: raw.name,
     slug: raw.metaData?.slug ?? undefined,
     hasOptions: !!raw.productOptionSetId,
-    currencyCode: firstPriced?.currencyCode,
-    currencySymbol: firstPriced?.currencySymbol,
+    currencyCode: firstPriced?.currencyCode ?? fallbackCurrency.code,
+    currencySymbol: firstPriced?.currencySymbol ?? fallbackCurrency.symbol,
+    variantTypes: resolveVariantTypes(variants, catalog),
     variants,
   };
 }

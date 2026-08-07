@@ -19,6 +19,14 @@ export const RULE_LABEL_KEYS: Record<Rule['kind'], TranslationKey> = {
   schedule: 'rules.schedule',
 };
 
+const RULE_HINT_KEYS: Record<Rule['kind'], TranslationKey> = {
+  cart_total: 'rules.cart_totalHint',
+  cart_contains_product: 'rules.cart_contains_productHint',
+  page_type: 'rules.page_typeHint',
+  visitor: 'rules.visitorHint',
+  schedule: 'rules.scheduleHint',
+};
+
 const PAGE_TYPES: Array<{ value: PageType; label: TranslationKey }> = [
   { value: 'home', label: 'page.home' },
   { value: 'product', label: 'page.product' },
@@ -40,7 +48,10 @@ export function RuleRow({ rule, index, onChange, onRemove }: Props) {
   return (
     <div className="flex items-start gap-3 rounded-md border p-4">
       <div className="flex flex-1 flex-col gap-3">
-        <span className="text-xs font-medium">{t(RULE_LABEL_KEYS[rule.kind])}</span>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium">{t(RULE_LABEL_KEYS[rule.kind])}</span>
+          <span className="text-xs text-muted-foreground">{t(RULE_HINT_KEYS[rule.kind])}</span>
+        </div>
 
         {rule.kind === 'cart_total' ? (
           <div className="flex gap-2">

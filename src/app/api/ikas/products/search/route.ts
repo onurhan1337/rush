@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withMerchant } from '@/lib/api-route-helpers';
-import { getProduct, searchProducts } from '@/lib/ikas-products';
+import { createProductLoader } from '@/lib/ikas-products';
 import type { ResolvedProduct } from '@/lib/campaigns/product';
 
 export type SearchProductsApiResponse = {
@@ -9,14 +9,14 @@ export type SearchProductsApiResponse = {
 
 export const GET = withMerchant(async (request, context) => {
   const { searchParams } = new URL(request.url);
+  const loader = createProductLoader(context.ikas, context.merchantId);
   const id = searchParams.get('id');
 
   if (id) {
-    const product = await getProduct(context.ikas, context.merchantId, id);
+    const product = await loader.byId(id);
     return NextResponse.json({ data: { products: product ? [product] : [] } });
   }
 
-  const query = searchParams.get('q') ?? '';
-  const products = await searchProducts(context.ikas, context.merchantId, query.trim());
+  const products = await loader.search((searchParams.get('q') ?? '').trim());
   return NextResponse.json({ data: { products } });
 });

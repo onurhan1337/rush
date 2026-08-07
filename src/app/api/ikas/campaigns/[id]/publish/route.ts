@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { apiError, ensureSettings, withMerchantParams } from '@/lib/api-route-helpers';
 import { getCampaignType } from '@/lib/campaigns/registry';
 import { deleteIkasCampaigns, upsertIkasCampaign } from '@/lib/campaigns/ikas-campaign-sync';
-import { getProducts } from '@/lib/ikas-products';
+import { createProductLoader } from '@/lib/ikas-products';
 import { getPublicBaseUrl } from '@/lib/public-url';
 import { installScript, listStorefronts } from '@/lib/storefront-script';
 import { CampaignManager } from '@/models/campaign/manager';
@@ -35,7 +35,7 @@ export const POST = withMerchantParams<Params>(async (request, context, params) 
   }
 
   const productIds = Array.from(new Set((parsedConfig.data as { items: Array<{ productId: string }> }).items.map((item) => item.productId)));
-  const products = await getProducts(context.ikas, context.merchantId, productIds);
+  const products = await createProductLoader(context.ikas, context.merchantId).byIds(productIds);
   if (products.length !== productIds.length) return apiError(400, 'Kampanyadaki ürünlerin bazıları ikas tarafında bulunamadı');
 
   const storefronts = await listStorefronts(context.ikas);

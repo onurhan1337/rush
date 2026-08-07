@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIkas } from '@/helpers/api-helpers';
 import { getCampaignType } from '@/lib/campaigns/registry';
-import { getProduct } from '@/lib/ikas-products';
+import { createProductLoader } from '@/lib/ikas-products';
 import { isValidPublicKeyFormat } from '@/lib/public-key';
 import { getPublicBaseUrl } from '@/lib/public-url';
 import { AuthTokenManager } from '@/models/auth-token/manager';
@@ -40,8 +40,7 @@ export async function GET(request: NextRequest) {
     const authToken = await AuthTokenManager.get(settings.authorizedAppId);
     if (!authToken || authToken.deleted) return payload(empty);
 
-    const ikas = getIkas(authToken);
-    const productCache = new Map<string, Awaited<ReturnType<typeof getProduct>>>();
+    const loader = createProductLoader(getIkas(authToken), settings.merchantId);
     const widgetCampaigns: WidgetCampaign[] = [];
 
     for (const campaign of campaigns) {
@@ -51,14 +50,8 @@ export async function GET(request: NextRequest) {
       const parsedConfig = definition.configSchema.safeParse(campaign.config);
       if (!parsedConfig.success) continue;
 
-      const products: ResolvedProduct[] = [];
-      for (const item of (parsedConfig.data as { items: Array<{ productId: string }> }).items) {
-        if (!productCache.has(item.productId)) {
-          productCache.set(item.productId, await getProduct(ikas, settings.merchantId, item.productId));
-        }
-        const product = productCache.get(item.productId);
-        if (product) products.push(product);
-      }
+      const items = (parsedConfig.data as { items: Array<{ productId: string }> }).items;
+      const products: ResolvedProduct[] = await loader.byIds(items.map((item) => item.productId));
       if (!products.length) continue;
 
       const widgetCampaign = definition.toWidgetPayload(campaign, parsedConfig.data, products);

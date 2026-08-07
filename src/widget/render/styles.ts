@@ -3,6 +3,14 @@ import type { Appearance } from '@/lib/campaigns/appearance';
 export const STYLES = `
 :host { all: initial; }
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: inherit; }
+button {
+  font: inherit;
+  color: inherit;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
 
 .rush-root {
   position: fixed;
@@ -15,8 +23,8 @@ export const STYLES = `
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   color: #0A0A0A;
 }
-.rush-root[data-side="left"] { left: 0; flex-direction: row; }
-.rush-root[data-side="right"] { right: 0; flex-direction: row-reverse; }
+.rush-root[data-side="left"] { left: env(safe-area-inset-left, 0px); flex-direction: row; }
+.rush-root[data-side="right"] { right: env(safe-area-inset-right, 0px); flex-direction: row-reverse; }
 
 .rush-tab {
   display: flex;
@@ -47,6 +55,11 @@ export const STYLES = `
 .rush-panel {
   width: 340px;
   max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0,0,0,.12);
@@ -64,8 +77,8 @@ export const STYLES = `
   position: absolute;
   top: 14px;
   right: 14px;
-  width: 16px;
-  height: 16px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   background: none;
@@ -73,8 +86,11 @@ export const STYLES = `
   cursor: pointer;
   line-height: 1;
   font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 140ms ease;
 }
-.rush-close:hover { color: #0A0A0A; }
 
 .rush-headline { font-size: 16px; font-weight: 600; padding-right: 24px; }
 .rush-subtitle { font-size: 13px; color: #8A8A8A; margin-top: 4px; }
@@ -106,6 +122,7 @@ export const STYLES = `
 }
 
 .rush-product {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -114,6 +131,7 @@ export const STYLES = `
   padding: 12px;
   margin-top: 12px;
 }
+.rush-product[data-paged="true"] { padding-right: 60px; }
 .rush-media {
   width: 72px;
   height: 72px;
@@ -126,7 +144,7 @@ export const STYLES = `
 .rush-media img, .rush-media video { width: 100%; height: 100%; object-fit: cover; display: none; }
 .rush-media[data-state="image"] img { display: block; }
 .rush-media[data-state="video"] video { display: block; }
-.rush-product-info { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.rush-product-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
 .rush-product-name {
   font-size: 13px;
   font-weight: 600;
@@ -139,13 +157,21 @@ export const STYLES = `
 .rush-old { font-size: 12px; color: #9CA3AF; text-decoration: line-through; }
 .rush-new { font-size: 15px; font-weight: 700; }
 
-.rush-nav-row { display: flex; align-items: center; justify-content: flex-end; gap: 2px; margin-top: 12px; }
-.rush-nav-count { font-size: 11px; color: #9CA3AF; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.rush-nav-row {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
 .rush-nav {
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: none;
+  border-radius: 50%;
   background: none;
   box-shadow: none;
   color: #6B7280;
@@ -153,17 +179,31 @@ export const STYLES = `
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: color 140ms ease;
 }
 .rush-nav svg { width: 16px; height: 16px; }
 .rush-nav[data-direction="next"] svg { transform: rotate(180deg); }
-.rush-nav:hover { color: #0A0A0A; }
-.rush-nav[disabled] { opacity: .25; cursor: default; }
+.rush-nav[disabled] { opacity: .3; cursor: default; }
 
-.rush-variants { display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; padding-bottom: 2px; }
+.rush-variant-groups { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.rush-variant-group { display: flex; flex-direction: column; gap: 6px; }
+.rush-variant-group-label { font-size: 11px; font-weight: 500; color: #8A8A8A; }
+.rush-variants {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.rush-variants::-webkit-scrollbar { display: none; }
 .rush-variant {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: none;
+  min-height: 32px;
   border: 1px solid #E5E5E5;
   background: #fff;
   border-radius: 999px;
@@ -174,43 +214,22 @@ export const STYLES = `
   color: #0A0A0A;
   transition: border-color 140ms ease, background-color 140ms ease;
 }
-.rush-variant:hover:not([disabled]) { border-color: #A3A3A3; }
 .rush-variant[aria-pressed="true"] { border-color: var(--rush-accent); box-shadow: inset 0 0 0 1px var(--rush-accent); font-weight: 600; }
 .rush-variant[disabled] { text-decoration: line-through; opacity: .45; cursor: not-allowed; }
-.rush-variant-dot, .rush-variant-thumb {
+.rush-variant-dot {
   flex: none;
-  background: #E5E5E5 center/cover no-repeat;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
-}
-.rush-variant-dot { width: 14px; height: 14px; border-radius: 50%; }
-.rush-variant-thumb { width: 28px; height: 28px; border-radius: 6px; }
-
-.rush-variants[data-style="image"] .rush-variant { border-radius: 10px; padding: 5px 10px 5px 5px; }
-.rush-variants[data-style="list"] { flex-direction: column; gap: 6px; overflow-x: visible; }
-.rush-variants[data-style="list"] .rush-variant { width: 100%; border-radius: 10px; padding: 10px 12px; }
-.rush-variants[data-style="list"] .rush-variant-label { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; }
-.rush-variant-price { font-variant-numeric: tabular-nums; color: #6B7280; }
-.rush-variant-mark {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  border: 1px solid #D4D4D4;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  position: relative;
+  background: #E5E5E5 center/cover no-repeat;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
 }
-.rush-variants[data-style="list"][data-selection="multi"] .rush-variant-mark { border-radius: 5px; }
-.rush-variant[aria-pressed="true"] .rush-variant-mark { border-color: var(--rush-accent); background: var(--rush-accent); }
-.rush-variant[aria-pressed="true"] .rush-variant-mark::after {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  border-radius: inherit;
-  background: #fff;
-}
+.rush-variant-dot[data-blank="true"] { background: repeating-linear-gradient(45deg, #E5E5E5 0 3px, #F5F5F5 3px 6px); }
+.rush-variant-group[data-selection="color"] .rush-variant { padding: 5px 12px 5px 6px; }
 
 .rush-cta {
   width: 100%;
-  height: 48px;
+  min-height: 48px;
   margin-top: 16px;
   border: 1px solid transparent;
   border-radius: 10px;
@@ -218,24 +237,30 @@ export const STYLES = `
   color: #fff;
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: .02em;
+  letter-spacing: .06em;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: filter 140ms ease, background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+  transition: transform 140ms ease, filter 140ms ease, background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
 }
-.rush-cta:hover:not([disabled]) { filter: brightness(1.12); box-shadow: 0 4px 14px rgba(0,0,0,.16); }
-.rush-cta:active:not([disabled]) { filter: brightness(.94); box-shadow: none; }
+.rush-cta:active:not([disabled]) { transform: translateY(0); filter: brightness(.92); box-shadow: none; }
 .rush-cta:focus-visible { outline: 2px solid var(--rush-accent); outline-offset: 2px; }
 .rush-cta[data-state="success"] { background: #16A34A; }
 
 .rush-root[data-cta="outline"] .rush-cta { background: transparent; color: var(--rush-accent); border-color: var(--rush-accent); }
-.rush-root[data-cta="outline"] .rush-cta:hover:not([disabled]) { background: var(--rush-accent); color: #fff; filter: none; }
 .rush-root[data-cta="soft"] .rush-cta { background: #F5F5F5; color: #0A0A0A; }
-.rush-root[data-cta="soft"] .rush-cta:hover:not([disabled]) { background: #EAEAEA; filter: none; box-shadow: none; }
 .rush-root[data-cta="soft"] .rush-cta[data-state="success"], .rush-root[data-cta="outline"] .rush-cta[data-state="success"] { background: #16A34A; color: #fff; border-color: #16A34A; }
+
+@media (hover: hover) and (pointer: fine) {
+  .rush-cta:hover:not([disabled]) { transform: translateY(-1px); filter: brightness(1.14); box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+  .rush-root[data-cta="outline"] .rush-cta:hover:not([disabled]) { background: var(--rush-accent); color: #fff; filter: none; }
+  .rush-root[data-cta="soft"] .rush-cta:hover:not([disabled]) { background: #EAEAEA; filter: none; box-shadow: 0 4px 12px rgba(0,0,0,.10); }
+  .rush-nav:hover:not([disabled]) { color: #0A0A0A; }
+  .rush-variant:hover:not([disabled]) { border-color: #A3A3A3; }
+  .rush-close:hover { color: #0A0A0A; }
+}
 
 .rush-cta[disabled] { opacity: .5; cursor: not-allowed; }
 .rush-error { margin-top: 8px; font-size: 12px; color: #DC2626; }
@@ -249,12 +274,19 @@ export const STYLES = `
 .rush-ended { margin-top: 16px; font-size: 13px; color: #8A8A8A; text-align: center; }
 
 @media (prefers-reduced-motion: reduce) {
-  .rush-panel, .rush-cta, .rush-variant { transition: none; }
+  .rush-panel, .rush-cta, .rush-variant, .rush-nav { transition: none; }
+  .rush-cta:hover:not([disabled]) { transform: none; }
   .rush-dots span { animation: none; opacity: 1; }
 }
 
-@media (max-width: 480px) {
-  .rush-panel { width: calc(100vw - 60px); max-width: 360px; }
+@media (max-width: 640px) {
+  .rush-panel { width: calc(100vw - 56px); max-width: 360px; padding: 18px 16px; }
+  .rush-close { top: 10px; right: 10px; width: 32px; height: 32px; font-size: 20px; }
+  .rush-headline { padding-right: 32px; }
+  .rush-product[data-paged="true"] { padding-right: 74px; }
+  .rush-nav { width: 34px; height: 34px; }
+  .rush-variant { min-height: 40px; padding: 8px 14px; font-size: 13px; }
+  .rush-cta { min-height: 52px; }
 }
 `;
 

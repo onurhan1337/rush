@@ -9,6 +9,9 @@ const LOCALE_KEY = 'rush.locale';
 type Translate = (key: TranslationKey) => string;
 
 const I18nContext = createContext<Translate>((key) => dictionaries.tr[key]);
+const LocaleContext = createContext<Locale>('tr');
+
+const INTL_LOCALES: Record<Locale, string> = { tr: 'tr-TR', en: 'en-US' };
 
 function normalize(language: string | undefined): Locale {
   return language?.toLowerCase().startsWith('en') ? 'en' : 'tr';
@@ -44,9 +47,17 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const translate = useMemo<Translate>(() => (key) => dictionaries[locale][key] ?? dictionaries.tr[key], [locale]);
 
-  return <I18nContext.Provider value={translate}>{children}</I18nContext.Provider>;
+  return (
+    <LocaleContext.Provider value={locale}>
+      <I18nContext.Provider value={translate}>{children}</I18nContext.Provider>
+    </LocaleContext.Provider>
+  );
 }
 
 export function useT(): Translate {
   return useContext(I18nContext);
+}
+
+export function useIntlLocale(): string {
+  return INTL_LOCALES[useContext(LocaleContext)];
 }
