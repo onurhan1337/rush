@@ -11,7 +11,7 @@
     "lint": "next lint",
     "codegen": "graphql-codegen --config src/lib/ikas-client/codegen.ts",
     "build:watch": "tsc --watch",
-    "prisma:init": "prisma generate && prisma db push --accept-data-loss",
+    "prisma:init": "prisma generate && prisma migrate deploy",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",

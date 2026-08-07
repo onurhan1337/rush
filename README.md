@@ -76,7 +76,7 @@ A dependency-free TypeScript bundle compiled by esbuild to `public/rush.js`. It 
                                   \             /
                                    [ Next.js server ]
                                     /            \
-                       ikas Admin GraphQL      Prisma / SQLite
+                       ikas Admin GraphQL     Prisma / Postgres
 ```
 
 Rule evaluation, appearance types and widget payload types all live in `src/lib/campaigns` and are imported by both the server and the widget bundle. A rule behaves identically wherever it runs.
@@ -84,7 +84,7 @@ Rule evaluation, appearance types and widget payload types all live in `src/lib/
 ## How publishing works
 
 ```
-Draft campaign (SQLite)
+Draft campaign (Postgres)
         |
         |  validate config against the campaign type's zod schema
         v
@@ -169,19 +169,21 @@ src/
     i18n/            Turkish and English dictionaries, locale from App Bridge
   models/            Prisma-backed managers (auth token, campaign, events, settings, scripts)
   widget/            Storefront bundle: context, rendering, transport
-prisma/              SQLite schema
+prisma/              Postgres schema and migrations
 ```
 
 ## Getting started
 
-Requires Node 20 or newer, and pnpm.
+Requires Node 20 or newer, pnpm, and a Postgres database.
 
 ```bash
 pnpm install
-cp .env.example .env.local
+cp .env.example .env
 pnpm prisma:init
 pnpm dev
 ```
+
+Use `.env` rather than `.env.local`: the Prisma CLI reads only the former, and it needs the connection strings. Both are gitignored.
 
 ### Environment
 
@@ -216,7 +218,7 @@ The dashboard compares granted scopes against this list on load and shows a reau
 | `pnpm dev:widget` | Rebuild the widget bundle on change |
 | `pnpm build` | Generate the Prisma client, build the widget, build Next.js |
 | `pnpm codegen` | Regenerate GraphQL types from `graphql-requests.ts` |
-| `pnpm prisma:init` | Generate the Prisma client and push the schema to the local DB |
+| `pnpm prisma:init` | Generate the Prisma client and apply pending migrations |
 | `pnpm prisma:studio` | Inspect the local database |
 | `pnpm lint` | Run ESLint |
 
