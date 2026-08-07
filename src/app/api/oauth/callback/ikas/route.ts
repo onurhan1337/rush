@@ -13,6 +13,7 @@ import z from 'zod';
 
 const callbackSchema = z.object({
   code: z.string().min(1, 'Authorization code is required'),
+  storeName: z.string().min(1).optional(),
   state: z.string().optional(),
   signature: z.string().optional(),
 });
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
     // Validate the incoming request parameters (code, state, signature)
     const validation = validateRequest(callbackSchema, {
       code: searchParams.get('code'),
+      storeName: searchParams.get('storeName') || undefined,
       state: searchParams.get('state') || undefined,
       signature: searchParams.get('signature') || undefined,
     });
@@ -40,7 +42,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    const { code, state, signature } = validation.data;
+    const { code, storeName: storeNameParam, state, signature } = validation.data;
 
     // Validate code signature
     if (signature &&!TokenHelpers.validateCodeSignature(code, signature, config.oauth.clientSecret!)) {
@@ -53,18 +55,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid state parameter' }, { status: 400 });
     }
 
+    // ikas echoes storeName back on the callback. Prefer it over the session: the
+    // OAuth flow can run inside the Admin iframe, where the cookie written during
+    // authorize is a third-party cookie and never makes it back here. Falling back
+    // to 'api' would post the code to the wrong store host and earn a 400.
+    const storeName = storeNameParam || (session.storeName as string | undefined) || 'api';
+    const redirectUri = getRedirectUri(request.headers.get('host')!);
+
     // Exchange authorization code for access/refresh tokens
     const tokenResponse = await OAuthAPI.getTokenWithAuthorizationCode(
       {
         code: code as string,
         client_id: config.oauth.clientId!,
         client_secret: config.oauth.clientSecret!,
-        redirect_uri: getRedirectUri(request.headers.get('host')!),
+        redirect_uri: redirectUri,
       },
-      {
-        storeName: (session.storeName || 'api') as string,
-      },
-    );
+      { storeName },
+    ).catch((error) => {
+      // The SDK throws on non-2xx, so the ikas error body is the only thing that
+      // says *why* (invalid_client, invalid_grant, redirect_uri mismatch...).
+      const response = (error as { response?: { status?: number; data?: unknown } }).response;
+      console.error('Token exchange failed:', { storeName, redirectUri, status: response?.status, body: response?.data });
+      throw error;
+    });
 
     if (!tokenResponse.data) {
       // Failed to get token
