@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-const HTML = `<!doctype html>
+function html(version: string): string {
+  return `<!doctype html>
 <html lang="tr">
 <head>
 <meta charset="utf-8">
@@ -60,12 +61,13 @@ const HTML = `<!doctype html>
     <div class="bar line w66"></div>
     <div class="bar line w50"></div>
   </div>
-  <script src="/rush.js" data-rush-preview="1"></script>
+  <script src="/rush.js?v=${version}" data-rush-preview="1"></script>
 </body>
 </html>`;
+}
 
 export async function GET() {
-  return new NextResponse(HTML, {
+  return new NextResponse(html(String(Date.now())), {
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
   });
 }

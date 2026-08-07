@@ -2,16 +2,23 @@ export type MountTarget =
   | { mode: 'fixed'; side: 'left' | 'right' }
   | { mode: 'selector'; selector: string; position: 'before' | 'after' | 'append' };
 
-export type AppearanceIcon = 'clock' | 'gift' | 'bolt' | 'none';
+export const APPEARANCE_ICONS = ['clock', 'gift', 'bolt', 'flame', 'tag', 'sparkle', 'percent', 'star', 'cart', 'crown', 'none'] as const;
 
-export const CTA_STYLES = ['solid', 'outline', 'soft'] as const;
+export type AppearanceIcon = (typeof APPEARANCE_ICONS)[number];
+
+export const CTA_STYLES = ['solid', 'gradient', 'outline', 'soft'] as const;
 
 export type CtaStyle = (typeof CTA_STYLES)[number];
+
+export const RADII = [0, 8, 12, 16, 24] as const;
+
+export type Radius = (typeof RADII)[number];
 
 export type Appearance = {
   mount: MountTarget;
   accentColor: string;
-  radius: 0 | 8 | 16;
+  secondaryColor: string;
+  radius: Radius;
   icon: AppearanceIcon;
   ctaStyle: CtaStyle;
   autoOpen: boolean;
@@ -21,9 +28,30 @@ export type Appearance = {
 export const DEFAULT_APPEARANCE: Appearance = {
   mount: { mode: 'fixed', side: 'left' },
   accentColor: '#0A0A0A',
+  secondaryColor: '#0A0A0A',
   radius: 16,
   icon: 'clock',
   ctaStyle: 'solid',
   autoOpen: false,
   autoOpenDelaySec: 3,
 };
+
+export type RadiusScale = {
+  tab: number;
+  panel: number;
+  surface: number;
+  control: number;
+  pill: string;
+};
+
+export function radiusScale(radius: number): RadiusScale {
+  if (radius <= 0) return { tab: 0, panel: 0, surface: 0, control: 0, pill: '0px' };
+
+  return {
+    tab: radius,
+    panel: radius + 4,
+    surface: Math.round(radius * 0.75),
+    control: Math.round(radius * 0.65),
+    pill: '999px',
+  };
+}

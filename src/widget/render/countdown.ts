@@ -9,17 +9,35 @@ function pad(value: number): string {
   return value < 10 ? `0${value}` : String(value);
 }
 
+type Cell = { node: HTMLElement; set: (value: string) => void };
+
+function createCell(): Cell {
+  const node = el('span', 'rush-cell');
+  const digits = el('span', undefined, '--');
+  node.appendChild(digits);
+
+  const set = (value: string) => {
+    if (digits.textContent === value) return;
+    digits.textContent = value;
+    node.removeAttribute('data-tick');
+    void node.offsetWidth;
+    node.setAttribute('data-tick', 'true');
+  };
+
+  return { node, set };
+}
+
 export function createCountdown(endsAt: number, label: string, onEnd: () => void): Countdown {
   const node = el('div', 'rush-countdown');
   node.appendChild(el('span', 'rush-countdown-label', label));
 
   const cells = el('div', 'rush-countdown-cells');
-  const first = el('span', 'rush-cell', '--');
-  const second = el('span', 'rush-cell', '--');
-  const third = el('span', 'rush-cell', '--');
-  cells.appendChild(first);
-  cells.appendChild(second);
-  cells.appendChild(third);
+  const first = createCell();
+  const second = createCell();
+  const third = createCell();
+  cells.appendChild(first.node);
+  cells.appendChild(second.node);
+  cells.appendChild(third.node);
   node.appendChild(cells);
 
   let frame = 0;
@@ -33,13 +51,13 @@ export function createCountdown(endsAt: number, label: string, onEnd: () => void
       lastRendered = remaining;
       const days = Math.floor(remaining / 86400);
       if (days >= 1) {
-        first.textContent = pad(days);
-        second.textContent = pad(Math.floor((remaining % 86400) / 3600));
-        third.textContent = pad(Math.floor((remaining % 3600) / 60));
+        first.set(pad(days));
+        second.set(pad(Math.floor((remaining % 86400) / 3600)));
+        third.set(pad(Math.floor((remaining % 3600) / 60)));
       } else {
-        first.textContent = pad(Math.floor(remaining / 3600));
-        second.textContent = pad(Math.floor((remaining % 3600) / 60));
-        third.textContent = pad(remaining % 60);
+        first.set(pad(Math.floor(remaining / 3600)));
+        second.set(pad(Math.floor((remaining % 3600) / 60)));
+        third.set(pad(remaining % 60));
       }
     }
 
