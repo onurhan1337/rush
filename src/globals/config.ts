@@ -11,6 +11,10 @@ export const REQUIRED_SCOPES = [
   'write_campaigns',
 ] as const;
 
+// A trailing slash here becomes a double slash in the redirect_uri, which no
+// longer matches the URI registered with ikas and fails the token exchange.
+const deployUrl = (process.env.NEXT_PUBLIC_DEPLOY_URL ?? '').replace(/\/+$/, '');
+
 export const config = {
   // Graph API and Store config
   graphApiUrl: process.env.NEXT_PUBLIC_GRAPH_API_URL,
@@ -18,7 +22,7 @@ export const config = {
   cookiePassword: process.env.SECRET_COOKIE_PASSWORD,
 
   // Public URL the storefront script and public endpoints are served from
-  deployUrl: process.env.NEXT_PUBLIC_DEPLOY_URL,
+  deployUrl,
 
   // Secret used to derive per-merchant public keys for the storefront widget
   publicKeySecret: process.env.RUSH_PUBLIC_KEY_SECRET,
@@ -28,7 +32,7 @@ export const config = {
     scope: REQUIRED_SCOPES.join(','),
     clientId: process.env.NEXT_PUBLIC_CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET,
-    redirectUri: `${process.env.NEXT_PUBLIC_DEPLOY_URL}/api/oauth/callback/ikas`,
+    redirectUri: `${deployUrl}/api/oauth/callback/ikas`,
   },
 };
 

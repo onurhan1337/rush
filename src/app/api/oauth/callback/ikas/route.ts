@@ -18,6 +18,24 @@ const callbackSchema = z.object({
   signature: z.string().optional(),
 });
 
+type TokenExchangeDetail = {
+  storeName: string;
+  redirectUri: string;
+  status?: number;
+  body?: unknown;
+};
+
+/**
+ * Carries the ikas rejection reason out of the token exchange so the callback can
+ * report it instead of a bare "Callback failed", which says nothing actionable.
+ */
+class TokenExchangeError extends Error {
+  constructor(readonly detail: TokenExchangeDetail) {
+    super('Token exchange failed');
+    this.name = 'TokenExchangeError';
+  }
+}
+
 /**
  * Handles the OAuth callback for Ikas.
  * Validates code signature, optionally validates state for CSRF protection,
@@ -72,11 +90,11 @@ export async function GET(request: NextRequest) {
       },
       { storeName },
     ).catch((error) => {
-      // The SDK throws on non-2xx, so the ikas error body is the only thing that
-      // says *why* (invalid_client, invalid_grant, redirect_uri mismatch...).
+      // The SDK throws on non-2xx, and the ikas error body is the only thing that
+      // says *why* (invalid_client, invalid_grant, redirect_uri mismatch...). Neither
+      // the code nor the secret is echoed back, so this is safe to surface.
       const response = (error as { response?: { status?: number; data?: unknown } }).response;
-      console.error('Token exchange failed:', { storeName, redirectUri, status: response?.status, body: response?.data });
-      throw error;
+      throw new TokenExchangeError({ storeName, redirectUri, status: response?.status, body: response?.data });
     });
 
     if (!tokenResponse.data) {
@@ -163,6 +181,11 @@ export async function GET(request: NextRequest) {
     // Redirect the user to the callback URL
     return NextResponse.redirect(new URL(`/callback?${callbackUrl.toString()}`, getRedirectUri(request.headers.get('host')!)));
   } catch (error) {
+    if (error instanceof TokenExchangeError) {
+      console.error('Token exchange failed:', error.detail);
+      return NextResponse.json({ error: { statusCode: 400, message: 'Token exchange failed', ...error.detail } }, { status: 400 });
+    }
+
     // Log and return error response
     console.error('Callback error:', error);
     return NextResponse.json({ error: { statusCode: 500, message: 'Callback failed' } }, { status: 500 });
