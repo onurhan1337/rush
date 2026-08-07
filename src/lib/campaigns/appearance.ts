@@ -19,6 +19,7 @@ export type Appearance = {
   accentColor: string;
   secondaryColor: string;
   radius: Radius;
+  tabRadius: Radius;
   icon: AppearanceIcon;
   ctaStyle: CtaStyle;
   autoOpen: boolean;
@@ -30,6 +31,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   accentColor: '#0A0A0A',
   secondaryColor: '#0A0A0A',
   radius: 16,
+  tabRadius: 16,
   icon: 'clock',
   ctaStyle: 'solid',
   autoOpen: false,
@@ -37,7 +39,6 @@ export const DEFAULT_APPEARANCE: Appearance = {
 };
 
 export type RadiusScale = {
-  tab: number;
   panel: number;
   surface: number;
   control: number;
@@ -45,10 +46,9 @@ export type RadiusScale = {
 };
 
 export function radiusScale(radius: number): RadiusScale {
-  if (radius <= 0) return { tab: 0, panel: 0, surface: 0, control: 0, pill: '0px' };
+  if (radius <= 0) return { panel: 0, surface: 0, control: 0, pill: '0px' };
 
   return {
-    tab: radius,
     panel: radius + 4,
     surface: Math.round(radius * 0.75),
     control: Math.round(radius * 0.65),

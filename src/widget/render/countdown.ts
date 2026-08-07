@@ -5,23 +5,42 @@ export type Countdown = {
   stop: () => void;
 };
 
+const DIGITS = '0123456789';
+
 function pad(value: number): string {
   return value < 10 ? `0${value}` : String(value);
+}
+
+type Digit = { node: HTMLElement; set: (char: string) => void };
+
+function createDigit(): Digit {
+  const node = el('span', 'rush-roll-digit');
+  const strip = el('span', 'rush-roll-strip');
+
+  for (const digit of DIGITS) strip.appendChild(el('span', 'rush-roll-cell', digit));
+  node.appendChild(strip);
+
+  const set = (char: string) => {
+    const next = DIGITS.indexOf(char);
+    if (next >= 0) strip.style.setProperty('--rush-roll', String(next));
+  };
+
+  return { node, set };
 }
 
 type Cell = { node: HTMLElement; set: (value: string) => void };
 
 function createCell(): Cell {
   const node = el('span', 'rush-cell');
-  const digits = el('span', undefined, '--');
-  node.appendChild(digits);
+  const roll = el('span', 'rush-roll');
+  const digits = [createDigit(), createDigit()];
+
+  for (const digit of digits) roll.appendChild(digit.node);
+  node.appendChild(roll);
 
   const set = (value: string) => {
-    if (digits.textContent === value) return;
-    digits.textContent = value;
-    node.removeAttribute('data-tick');
-    void node.offsetWidth;
-    node.setAttribute('data-tick', 'true');
+    digits[0].set(value[0]);
+    digits[1].set(value[1]);
   };
 
   return { node, set };

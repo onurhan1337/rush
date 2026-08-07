@@ -52,6 +52,7 @@ export function AppearanceSection({ form }: { form: UseFormReturn<CampaignFormVa
   const accent = form.watch('appearance.accentColor') ?? '#0A0A0A';
   const secondary = form.watch('appearance.secondaryColor') ?? '#0A0A0A';
   const radius = form.watch('appearance.radius') ?? 16;
+  const tabRadius = form.watch('appearance.tabRadius') ?? 16;
   const icon = form.watch('appearance.icon');
   const ctaStyle = form.watch('appearance.ctaStyle');
 
@@ -73,6 +74,14 @@ export function AppearanceSection({ form }: { form: UseFormReturn<CampaignFormVa
           <Segmented
             value={radius}
             onChange={(value) => form.setValue('appearance.radius', value, { shouldDirty: true })}
+            options={RADII.map((value) => ({ value, label: value }))}
+          />
+        </Field>
+
+        <Field label={t('appearance.tabRadius')}>
+          <Segmented
+            value={tabRadius}
+            onChange={(value) => form.setValue('appearance.tabRadius', value, { shouldDirty: true })}
             options={RADII.map((value) => ({ value, label: value }))}
           />
         </Field>

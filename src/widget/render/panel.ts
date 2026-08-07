@@ -12,6 +12,7 @@ export type Panel = {
 const FOCUSABLE = 'button:not([disabled]), a[href], input, [tabindex]:not([tabindex="-1"])';
 
 export function createPanel(root: ShadowRoot, headline: string, subtitle: string, onClose: () => void): Panel {
+  const container = root.querySelector<HTMLElement>('.rush-root');
   const node = el('div', 'rush-panel');
   node.setAttribute('role', 'dialog');
   node.setAttribute('aria-modal', 'false');
@@ -69,6 +70,7 @@ export function createPanel(root: ShadowRoot, headline: string, subtitle: string
     if (opened) return;
     opened = true;
     node.style.display = '';
+    container?.setAttribute('data-open', 'true');
     requestAnimationFrame(() => node.setAttribute('data-open', 'true'));
     document.addEventListener('keydown', handleKeydown, true);
     document.addEventListener('click', handleOutside, true);
@@ -81,6 +83,7 @@ export function createPanel(root: ShadowRoot, headline: string, subtitle: string
     opened = false;
     node.setAttribute('data-open', 'false');
     node.style.display = 'none';
+    container?.setAttribute('data-open', 'false');
     document.removeEventListener('keydown', handleKeydown, true);
     document.removeEventListener('click', handleOutside, true);
     onClose();

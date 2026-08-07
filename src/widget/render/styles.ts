@@ -39,11 +39,15 @@ button {
   border: none;
   cursor: pointer;
   flex: none;
-  transition: background-color 200ms ease;
+  position: relative;
+  z-index: 1;
+  opacity: .9;
+  transition: opacity 200ms ease, border-radius 260ms cubic-bezier(.22,1,.36,1);
 }
 .rush-root[data-side="left"] .rush-tab { border-radius: 0 var(--rush-radius-tab) var(--rush-radius-tab) 0; }
 .rush-root[data-side="right"] .rush-tab { border-radius: var(--rush-radius-tab) 0 0 var(--rush-radius-tab); }
-.rush-tab svg { width: 16px; height: 16px; flex: none; transition: transform 260ms cubic-bezier(.34,1.4,.64,1); }
+.rush-root[data-open="true"] .rush-tab { opacity: 1; border-radius: 0; }
+.rush-tab svg { width: 16px; height: 16px; flex: none; }
 .rush-tab-label {
   writing-mode: vertical-rl;
   text-transform: uppercase;
@@ -63,17 +67,25 @@ button {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   background: #fff;
-  border-radius: var(--rush-radius-panel);
-  box-shadow: 0 8px 32px rgba(0,0,0,.12);
   padding: 20px;
-  margin: 0 8px;
   position: relative;
   opacity: 0;
   transition: opacity 220ms ease, transform 260ms cubic-bezier(.22,1,.36,1);
 }
-.rush-root[data-side="left"] .rush-panel { transform: translateX(-12px); }
-.rush-root[data-side="right"] .rush-panel { transform: translateX(12px); }
-.rush-panel[data-open="true"] { opacity: 1; transform: translateX(0); }
+.rush-root[data-side="left"] .rush-panel {
+  margin: 0 12px 0 0;
+  border-radius: 0 var(--rush-radius-panel) var(--rush-radius-panel) 0;
+  box-shadow: 10px 8px 32px rgba(0,0,0,.12);
+  transform: translateX(-12px);
+}
+.rush-root[data-side="right"] .rush-panel {
+  margin: 0 0 0 12px;
+  border-radius: var(--rush-radius-panel) 0 0 var(--rush-radius-panel);
+  box-shadow: -10px 8px 32px rgba(0,0,0,.12);
+  transform: translateX(12px);
+}
+.rush-root[data-side="left"] .rush-panel[data-open="true"],
+.rush-root[data-side="right"] .rush-panel[data-open="true"] { opacity: 1; transform: translateX(0); }
 
 .rush-close {
   position: absolute;
@@ -123,11 +135,16 @@ button {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.rush-cell[data-tick="true"] span { animation: rush-tick 300ms cubic-bezier(.22,1,.36,1); }
-@keyframes rush-tick {
-  0% { opacity: 0; transform: translateY(-45%); }
-  100% { opacity: 1; transform: translateY(0); }
+.rush-roll { display: inline-flex; align-items: center; line-height: 1; font-variant-numeric: tabular-nums; }
+.rush-roll-digit { display: inline-block; height: 1em; overflow: hidden; vertical-align: top; }
+.rush-roll-strip {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(calc(var(--rush-roll, 0) * -1em));
+  transition: transform 700ms cubic-bezier(.16,1,.3,1);
+  will-change: transform;
 }
+.rush-roll-cell { display: flex; align-items: center; justify-content: center; height: 1em; line-height: 1; }
 
 .rush-product {
   position: relative;
@@ -281,9 +298,7 @@ button {
   }
   .rush-root[data-cta="outline"] .rush-cta:hover:not([disabled]) { background: var(--rush-accent); color: var(--rush-on-accent); }
   .rush-root[data-cta="soft"] .rush-cta:hover:not([disabled]) { background: var(--rush-accent-soft-hover); }
-  .rush-tab:hover { background: var(--rush-accent-hover); }
-  .rush-root[data-side="left"] .rush-tab:hover svg { transform: translateX(3px); }
-  .rush-root[data-side="right"] .rush-tab:hover svg { transform: translateX(-3px); }
+  .rush-tab:hover { opacity: 1; }
   .rush-nav:hover:not([disabled]) { color: #0A0A0A; }
   .rush-nav[data-direction="previous"]:hover:not([disabled]) { transform: translateX(-2px); }
   .rush-nav[data-direction="next"]:hover:not([disabled]) { transform: translateX(2px); }
@@ -309,8 +324,8 @@ button {
 .rush-ended { margin-top: 16px; font-size: 13px; color: #8A8A8A; text-align: center; }
 
 @media (prefers-reduced-motion: reduce) {
-  .rush-panel, .rush-cta, .rush-variant, .rush-nav, .rush-close, .rush-tab svg, .rush-variant-dot { transition: none; }
-  .rush-cta::after, .rush-cell[data-tick="true"] span { animation: none; }
+  .rush-panel, .rush-cta, .rush-variant, .rush-nav, .rush-close, .rush-tab, .rush-variant-dot, .rush-roll-strip { transition: none; }
+  .rush-cta::after { animation: none; }
   .rush-close:hover, .rush-nav:hover:not([disabled]), .rush-variant:active:not([disabled]) { transform: none; }
   .rush-dots span { animation: none; opacity: 1; }
 }
@@ -344,7 +359,7 @@ export function applyAppearanceVars(host: HTMLElement, appearance: Appearance): 
     '--rush-secondary-ink': shade(secondaryColor, 0.05),
     '--rush-on-secondary': readableOn(secondaryColor),
     '--rush-sheen': onAccent === '#FFFFFF' ? 'rgba(255,255,255,.28)' : 'rgba(0,0,0,.12)',
-    '--rush-radius-tab': `${radius.tab}px`,
+    '--rush-radius-tab': `${appearance.tabRadius}px`,
     '--rush-radius-panel': `${radius.panel}px`,
     '--rush-radius-surface': `${radius.surface}px`,
     '--rush-radius-control': `${radius.control}px`,

@@ -8,13 +8,20 @@ export const mountTargetSchema = z.discriminatedUnion('mode', [
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Geçerli bir hex renk girin');
 
+const radiusValue = z.union([
+  z.literal(RADII[0]),
+  z.literal(RADII[1]),
+  z.literal(RADII[2]),
+  z.literal(RADII[3]),
+  z.literal(RADII[4]),
+]);
+
 export const appearanceSchema = z.object({
   mount: mountTargetSchema.default(DEFAULT_APPEARANCE.mount),
   accentColor: hexColor.default(DEFAULT_APPEARANCE.accentColor),
   secondaryColor: hexColor.default(DEFAULT_APPEARANCE.secondaryColor),
-  radius: z
-    .union([z.literal(RADII[0]), z.literal(RADII[1]), z.literal(RADII[2]), z.literal(RADII[3]), z.literal(RADII[4])])
-    .default(DEFAULT_APPEARANCE.radius),
+  radius: radiusValue.default(DEFAULT_APPEARANCE.radius),
+  tabRadius: radiusValue.default(DEFAULT_APPEARANCE.tabRadius),
   icon: z.enum(APPEARANCE_ICONS).default(DEFAULT_APPEARANCE.icon),
   ctaStyle: z.enum(CTA_STYLES).default(DEFAULT_APPEARANCE.ctaStyle),
   autoOpen: z.boolean().default(DEFAULT_APPEARANCE.autoOpen),
