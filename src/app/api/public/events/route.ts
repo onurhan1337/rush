@@ -18,7 +18,6 @@ const eventsSchema = z.object({
         campaignId: z.string().min(1),
         type: z.enum(CAMPAIGN_EVENT_TYPES),
         variantId: z.string().optional(),
-        value: z.number().min(0).max(1000000).optional(),
       }),
     )
     .min(1)

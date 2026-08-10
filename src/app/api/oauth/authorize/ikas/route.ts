@@ -4,6 +4,7 @@ import { getSession, setSession } from '@/lib/session';
 import { validateRequest } from '@/lib/validation';
 import { OAuthAPI } from '@ikas/admin-api-client';
 import { NextRequest, NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
 import z from 'zod';
 
 // Validation schemas
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     const { storeName } = validation.data;
 
     // Generate a random state string for CSRF protection
-    const state = Math.random().toFixed(16);
+    const state = randomBytes(32).toString('base64url');
 
     // Retrieve the current session and update it with state and storeName
     const session = await getSession();

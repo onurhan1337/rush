@@ -9,7 +9,6 @@ export type IncomingEvent = {
   type: CampaignEventType;
   sessionId: string;
   variantId?: string;
-  value?: number;
 };
 
 type Bucket = { impressions: number; opens: number; clicks: number; addToCarts: number; dismisses: number; revenue: number };
@@ -49,7 +48,9 @@ export class CampaignEventManager {
         type: event.type,
         sessionId: event.sessionId,
         variantId: event.variantId ?? null,
-        value: typeof event.value === 'number' ? event.value : null,
+        // Public storefront events are untrusted. Revenue must only be written
+        // by a server-side order source that can verify the actual order total.
+        value: null,
       })),
     });
 
@@ -57,8 +58,6 @@ export class CampaignEventManager {
     for (const event of events) {
       const bucket = buckets.get(event.campaignId) ?? emptyBucket();
       buckets.set(event.campaignId, bucket);
-
-      if (event.type === 'ADD_TO_CART' && typeof event.value === 'number') bucket.revenue += event.value;
 
       const key = `${event.sessionId}|${event.campaignId}|${event.type}`;
       if (counted.has(key)) continue;

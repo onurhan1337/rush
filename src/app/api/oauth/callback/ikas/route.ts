@@ -9,12 +9,13 @@ import { TokenHelpers } from '@/helpers/token-helpers';
 import { AuthToken } from '@/models/auth-token';
 import { AuthTokenManager } from '@/models/auth-token/manager';
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import z from 'zod';
 
 const callbackSchema = z.object({
   code: z.string().min(1, 'Authorization code is required'),
   storeName: z.string().min(1).optional(),
-  state: z.string().optional(),
+  state: z.string().min(1, 'State is required'),
   signature: z.string().optional(),
 });
 
@@ -36,6 +37,12 @@ class TokenExchangeError extends Error {
   }
 }
 
+function statesMatch(expected: string, received: string): boolean {
+  const expectedBuffer = Buffer.from(expected, 'utf8');
+  const receivedBuffer = Buffer.from(received, 'utf8');
+  return expectedBuffer.length === receivedBuffer.length && timingSafeEqual(expectedBuffer, receivedBuffer);
+}
+
 /**
  * Handles the OAuth callback for Ikas.
  * Validates code signature, optionally validates state for CSRF protection,
@@ -51,7 +58,7 @@ export async function GET(request: NextRequest) {
     const validation = validateRequest(callbackSchema, {
       code: searchParams.get('code'),
       storeName: searchParams.get('storeName') || undefined,
-      state: searchParams.get('state') || undefined,
+      state: searchParams.get('state'),
       signature: searchParams.get('signature') || undefined,
     });
 
@@ -67,11 +74,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
-    // Retrieve session and optionally check state for CSRF protection
+    // State is mandatory and single-use: callbacks without the initiating
+    // session, with a mismatched value, or replayed after this point fail closed.
     const session = await getSession();
-    if (state && session.state && session.state !== state) {
+    if (!session.state || !statesMatch(session.state, state)) {
       return NextResponse.json({ error: 'Invalid state parameter' }, { status: 400 });
     }
+    session.state = undefined;
+    await setSession(session);
 
     // ikas echoes storeName back on the callback. Prefer it over the session: the
     // OAuth flow can run inside the Admin iframe, where the cookie written during
@@ -154,11 +164,10 @@ export async function GET(request: NextRequest) {
     // Store the token for future use
     await AuthTokenManager.put(token);
 
-    // Update session with new merchant and app IDs, clear state, and set expiration
+    // Update session with new merchant and app IDs and set expiration
     session.expiresAt = new Date(Date.now() + 3600 * 1000);
     session.merchantId = merchantId;
     session.authorizedAppId = authorizedAppId;
-    delete session.state;
 
     // Save updated session
     await setSession(session);
