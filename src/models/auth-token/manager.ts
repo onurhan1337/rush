@@ -1,10 +1,6 @@
 import { AuthToken } from './index';
 import { prisma } from '@/lib/prisma';
 
-/**
- * AuthTokenManager provides methods to manage AuthTokens.
- * This implementation uses a local JSON file for storage (for development only).
- */
 export class AuthTokenManager {
   private static toModel(db: any): AuthToken {
     return {
@@ -24,11 +20,6 @@ export class AuthTokenManager {
       scope: db.scope ?? undefined,
     };
   }
-  /**
-   * Retrieve an AuthToken by its authorizedAppId.
-   * @param authorizedAppId - The ID of the authorized app.
-   * @returns The AuthToken if found, otherwise undefined.
-   */
   static async get(authorizedAppId: string): Promise<AuthToken | undefined> {
     const token = await prisma.authToken.findUnique({
       where: { authorizedAppId },
@@ -36,11 +27,6 @@ export class AuthTokenManager {
     return token ? this.toModel(token) : undefined;
   }
 
-  /**
-   * Store a new AuthToken if it does not already exist.
-   * @param token - The AuthToken to store.
-   * @returns The stored AuthToken.
-   */
   static async put(token: AuthToken): Promise<AuthToken> {
     const upserted = await prisma.authToken.upsert({
       where: { id: token.id },
@@ -73,11 +59,6 @@ export class AuthTokenManager {
     return this.toModel(upserted);
   }
 
-  /**
-   * Mark an AuthToken as deleted by setting its 'deleted' property to true.
-   * @param authorizedAppId - The ID of the authorized app.
-   * @throws Error if the token is not found.
-   */
   static async delete(authorizedAppId: string): Promise<void> {
     const existing = await prisma.authToken.findUnique({ where: { authorizedAppId } });
     if (!existing) {
@@ -89,10 +70,6 @@ export class AuthTokenManager {
     });
   }
 
-  /**
-   * List all AuthTokens.
-   * @returns Array of AuthTokens.
-   */
   static async list(): Promise<AuthToken[]> {
     const tokens = await prisma.authToken.findMany();
     return tokens.map(AuthTokenManager.toModel);

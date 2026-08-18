@@ -14,10 +14,6 @@ function parseJson<T>(raw: string | null | undefined, fallback: T): T {
   }
 }
 
-// Rules are normalised on read so rows written by an older schema reach the editor
-// and the widget in the shape both of them expect. Conditions are parsed one by one:
-// a single unreadable condition must not drop the whole set, which would silently
-// widen the campaign to every visitor.
 function readRules(raw: string | null | undefined): RuleSet {
   const stored = parseJson<Partial<RuleSet>>(raw, EMPTY_RULE_SET);
   const conditions = Array.isArray(stored.conditions) ? stored.conditions : [];
@@ -52,6 +48,9 @@ export class CampaignManager {
       rules: readRules(db.rules),
       appearance: { ...DEFAULT_APPEARANCE, ...parseJson<Partial<Appearance>>(db.appearance, {}) },
       ikasCampaignIds: readIkasCampaignIds(db),
+      publishedSnapshot: db.publishedSnapshot ?? undefined,
+      publishedVersion: db.publishedVersion ?? undefined,
+      publishedAt: db.publishedAt ? new Date(db.publishedAt).toISOString() : undefined,
       priority: db.priority ?? 0,
       createdAt: new Date(db.createdAt).toISOString(),
       updatedAt: new Date(db.updatedAt).toISOString(),
@@ -73,6 +72,9 @@ export class CampaignManager {
       appearance: JSON.stringify(campaign.appearance ?? DEFAULT_APPEARANCE),
       ikasCampaignId: campaign.ikasCampaignIds?.[0] ?? null,
       ikasCampaignIds: JSON.stringify(campaign.ikasCampaignIds ?? []),
+      publishedSnapshot: campaign.publishedSnapshot ?? null,
+      publishedVersion: campaign.publishedVersion ?? null,
+      publishedAt: campaign.publishedAt ? new Date(campaign.publishedAt) : null,
       priority: campaign.priority ?? 0,
       deleted: campaign.deleted ?? false,
     };

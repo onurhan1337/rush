@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-// Validation helper functions
 export function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown): { success: true; data: T } | { success: false; error: string } {
   const result = schema.safeParse(data);
 

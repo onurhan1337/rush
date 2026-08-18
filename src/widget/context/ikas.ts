@@ -8,13 +8,19 @@ type IkasEventPayload = {
   };
 };
 
+type AddToCartResult = { success?: boolean; validationError?: string } | undefined;
+
 type IkasWindow = Window & {
   IkasEvents?: { subscribe: (options: { id: string; callback: (event: { type: string; data?: IkasEventPayload }) => void }) => void };
-  addToCart?: (options: { variantId: string; quantity: number; itemId?: string }) => Promise<{ success: boolean; validationError?: string }>;
+  addToCart?: (options: { variantId: string; quantity: number; itemId?: string }) => Promise<AddToCartResult> | AddToCartResult;
 };
 
 const CART_EVENTS = ['ADD_TO_CART', 'REMOVE_FROM_CART', 'VIEW_CART', 'UPDATE_CART'];
 const SF_GRAPHQL = 'https://api.myikas.com/api/sf/graphql';
+const ADD_TO_CART_TIMEOUT_MS = 8000;
+const ADD_TO_CART_WAIT_MS = 5000;
+const CART_QUERY =
+  'query getCartById($cartId: String!) { getCartById(cartId: $cartId) { totalFinalPrice totalPrice items { id quantity price variant { id productId } } } }';
 
 let cart: CartSnapshot | undefined;
 let cartResolved = false;
@@ -61,10 +67,22 @@ export function setCart(next: CartSnapshot | undefined): void {
   publish();
 }
 
-export function subscribeCart(): void {
+const SUBSCRIBE_RETRY_MS = 500;
+const SUBSCRIBE_TIMEOUT_MS = 8000;
+
+let subscribed = false;
+
+export function subscribeCart(startedAt = Date.now()): void {
+  if (subscribed) return;
+
   try {
     const events = ikasWindow().IkasEvents;
-    if (!events || typeof events.subscribe !== 'function') return;
+    if (!events || typeof events.subscribe !== 'function') {
+      if (Date.now() - startedAt < SUBSCRIBE_TIMEOUT_MS) setTimeout(() => subscribeCart(startedAt), SUBSCRIBE_RETRY_MS);
+      return;
+    }
+
+    subscribed = true;
     events.subscribe({
       id: 'rush',
       callback: (event) => {
@@ -74,34 +92,43 @@ export function subscribeCart(): void {
       },
     });
   } catch {
-    // storefront without IkasEvents — cart stays unresolved
+    return;
   }
 }
 
-export async function hydrateCart(): Promise<void> {
+async function fetchCart(): Promise<CartSnapshot | undefined> {
+  const cartId = localStorage.getItem('cartId');
+  if (!cartId) return { total: 0, lines: [] };
+
+  const response = await fetch(SF_GRAPHQL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: CART_QUERY, variables: { cartId } }),
+  });
+
+  if (!response.ok) return undefined;
+
+  const body = await response.json();
+  return snapshotFromPayload({ cart: body?.data?.getCartById });
+}
+
+export async function hydrateCart(): Promise<CartSnapshot | undefined> {
   try {
-    const cartId = localStorage.getItem('cartId');
-    if (!cartId) {
-      setCart({ total: 0, lines: [] });
-      return;
-    }
-
-    const response = await fetch(SF_GRAPHQL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: 'query getCartById($cartId: String!) { getCartById(cartId: $cartId) { totalFinalPrice totalPrice items { id quantity price variant { id productId } } } }',
-        variables: { cartId },
-      }),
-    });
-
-    const body = await response.json();
-    const snapshot = snapshotFromPayload({ cart: body?.data?.getCartById });
+    const snapshot = await fetchCart();
     setCart(snapshot ?? { total: 0, lines: [] });
+    return getCart();
   } catch {
     setCart(undefined);
-    cartResolved = true;
+    return undefined;
   }
+}
+
+export function cartContainsVariant(snapshot: CartSnapshot | undefined, variantId: string): boolean {
+  if (!snapshot) return false;
+  for (let i = 0; i < snapshot.lines.length; i++) {
+    if (snapshot.lines[i].variantId === variantId) return true;
+  }
+  return false;
 }
 
 function waitForAddToCart(timeoutMs: number): Promise<IkasWindow['addToCart'] | undefined> {
@@ -117,27 +144,62 @@ function waitForAddToCart(timeoutMs: number): Promise<IkasWindow['addToCart'] | 
   });
 }
 
-export async function addToCart(variantId: string, quantity: number): Promise<{ success: boolean; error?: string; unavailable?: boolean }> {
-  const fn = await waitForAddToCart(5000);
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve(fallback);
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch(() => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(fallback);
+      });
+  });
+}
+
+export type AddToCartOutcome = { success: boolean; error?: string; unavailable?: boolean; timedOut?: boolean };
+
+const TIMED_OUT: AddToCartOutcome = { success: false, timedOut: true };
+
+export async function addToCart(variantId: string, quantity: number): Promise<AddToCartOutcome> {
+  const fn = await waitForAddToCart(ADD_TO_CART_WAIT_MS);
   if (!fn) return { success: false, unavailable: true };
 
+  let outcome: AddToCartOutcome;
   try {
-    const result = await fn({ variantId, quantity });
-    if (result && result.success) return { success: true };
-    return { success: false, error: result?.validationError };
+    const call = Promise.resolve(fn({ variantId, quantity }));
+    const result = await withTimeout(call, ADD_TO_CART_TIMEOUT_MS, undefined);
+    if (result === undefined) outcome = TIMED_OUT;
+    else if (result.success) outcome = { success: true };
+    else outcome = { success: false, error: result.validationError };
   } catch {
-    return { success: false, unavailable: true };
+    outcome = { success: false, unavailable: true };
   }
+
+  if (outcome.success) return outcome;
+
+  const verified = await withTimeout(hydrateCart(), ADD_TO_CART_TIMEOUT_MS, undefined);
+  if (cartContainsVariant(verified, variantId)) return { success: true };
+
+  return outcome;
 }
 
 const LD_JSON = 'script[type="application/ld+json"]';
 const COLLECTION_LD = /"@type"\s*:\s*"CollectionPage"/;
 const PRODUCT_LD = /"@type"\s*:\s*"Product"/;
 
-// ikas serves products and categories from bare slugs — /basic-cap, /shoes — so the
-// path says nothing about the page. The storefront does emit schema.org data, where a
-// category page carries CollectionPage and a product page only Product. A category page
-// also lists its products, so CollectionPage has to win wherever it appears.
 function structuredPageType(): PageType | undefined {
   try {
     const scripts = document.querySelectorAll(LD_JSON);

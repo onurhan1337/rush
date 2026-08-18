@@ -7,18 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
-/**
- * AuthorizeStorePage
- * - Renders a form for the user to enter their store name and authorize the app.
- * - Handles error display if redirected back with a failure status.
- */
 const AuthorizeStorePage: React.FC = () => {
-  // State for the store name input
   const [storeName, setStoreName] = useState("");
-  // State to control error message visibility
   const [showError, setShowError] = useState(false);
 
-  // Parse query params on mount to prefill storeName and show error if needed
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("status") === "fail") {
@@ -30,11 +22,10 @@ const AuthorizeStorePage: React.FC = () => {
     }
   }, []);
 
-  // Handler for input change
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setStoreName(e.target.value);
-      if (showError) setShowError(false); // Hide error on user input
+      if (showError) setShowError(false);
     },
     [showError]
   );

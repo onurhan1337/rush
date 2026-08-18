@@ -8,8 +8,6 @@ export type ScopeApiResponse = {
   required: string[];
 };
 
-// ikas is inconsistent about singular/plural in scope strings, so compare on a
-// normalised form rather than raw equality.
 function normalizeScope(scope: string): string {
   return scope.trim().toLowerCase().replace(/s$/, '');
 }

@@ -2,17 +2,18 @@ import { NextResponse } from 'next/server';
 import { apiError, withMerchantParams } from '@/lib/api-route-helpers';
 import { campaignPatchSchema, parseCampaignConfig } from '@/lib/campaigns/api-schema';
 import { deleteIkasCampaigns } from '@/lib/campaigns/ikas-campaign-sync';
+import { hasUnpublishedChanges } from '@/lib/campaigns/publish-snapshot';
 import { CampaignManager } from '@/models/campaign/manager';
 import type { Campaign } from '@/models/campaign';
 
 type Params = { id: string };
 
-export type GetCampaignApiResponse = { campaign: Campaign };
+export type GetCampaignApiResponse = { campaign: Campaign; pendingPublish: boolean };
 
 export const GET = withMerchantParams<Params>(async (_request, context, params) => {
   const campaign = await CampaignManager.get(context.authorizedAppId, params.id);
   if (!campaign) return apiError(404, 'Kampanya bulunamadı');
-  return NextResponse.json({ data: { campaign } });
+  return NextResponse.json({ data: { campaign, pendingPublish: hasUnpublishedChanges(campaign) } });
 });
 
 export const PATCH = withMerchantParams<Params>(async (request, context, params) => {
@@ -28,8 +29,6 @@ export const PATCH = withMerchantParams<Params>(async (request, context, params)
   const patch = parsed.data;
   const nextType = patch.type ?? existing.type;
 
-  // Drafts are allowed to be incomplete — an editor that refuses to save until every
-  // field is valid loses the merchant's work. Publishing is where config is enforced.
   if (patch.config && (patch.status ?? existing.status) === 'ACTIVE') {
     const configResult = parseCampaignConfig(nextType, patch.config);
     if (!configResult.ok) return apiError(400, configResult.error);
@@ -48,7 +47,7 @@ export const PATCH = withMerchantParams<Params>(async (request, context, params)
     priority: patch.priority ?? existing.priority,
   });
 
-  return NextResponse.json({ data: { campaign } });
+  return NextResponse.json({ data: { campaign, pendingPublish: hasUnpublishedChanges(campaign) } });
 });
 
 export const DELETE = withMerchantParams<Params>(async (_request, context, params) => {

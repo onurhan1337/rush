@@ -25,8 +25,6 @@ async function resolveMerchant(request: NextRequest): Promise<MerchantContext | 
 
   const authToken = await AuthTokenManager.get(user.authorizedAppId);
   if (!authToken || authToken.deleted) {
-    // The JWT verifies but this database holds no install for it — usually a token
-    // minted against another deployment, or an app that was uninstalled.
     console.error('Auth token not found for authorizedAppId:', user.authorizedAppId, authToken?.deleted ? '(uninstalled)' : '(missing)');
     return apiError(404, 'Auth token not found');
   }

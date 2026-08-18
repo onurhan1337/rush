@@ -44,7 +44,6 @@ export async function makeDeleteRequest<T>({ url, token }: { url: string; token?
   });
 }
 
-// API requests object - frontend-backend bridge
 export const ApiRequests = {
   ikas: {
     getMerchant: (token: string) => makeGetRequest<GetMerchantApiResponse>({ url: '/api/ikas/get-merchant', token }),

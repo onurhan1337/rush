@@ -52,7 +52,7 @@ export function campaignToFormValues(campaign: Campaign): CampaignFormValues {
   };
 }
 
-export function useCampaignForm(campaign: Campaign, token: string) {
+export function useCampaignForm(campaign: Campaign, token: string, onSaved?: (pendingPublish: boolean) => void) {
   const t = useT();
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -64,8 +64,6 @@ export function useCampaignForm(campaign: Campaign, token: string) {
     mode: 'onChange',
   });
 
-  // Autosave deliberately bypasses handleSubmit: handleSubmit skips the callback when
-  // validation fails, which would silently discard every edit made to an incomplete draft.
   const save = useCallback(
     async (values: CampaignFormValues) => {
       const payload = {
@@ -83,16 +81,17 @@ export function useCampaignForm(campaign: Campaign, token: string) {
 
       setSaving(true);
       try {
-        await ApiRequests.ikas.updateCampaign(token, campaign.id, payload);
+        const response = await ApiRequests.ikas.updateCampaign(token, campaign.id, payload);
         lastPayloadRef.current = serialized;
         setSavedAt(new Date());
+        if (onSaved) onSaved(response.data?.data?.pendingPublish ?? false);
       } catch {
         toast.error(t('editor.saveFailed'));
       } finally {
         setSaving(false);
       }
     },
-    [campaign.id, token, t],
+    [campaign.id, token, t, onSaved],
   );
 
   const values = form.watch();

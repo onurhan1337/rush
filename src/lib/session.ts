@@ -1,4 +1,3 @@
-// this file is a wrapper with defaults to be used in both API routes and `getServerSideProps` functions
 import { config } from '@/globals/config';
 import { TOKEN_COOKIE } from '@/globals/constants';
 import { getIronSession } from 'iron-session';

@@ -1,17 +1,19 @@
 import { el } from './dom';
 
+export type CloseReason = 'button' | 'escape' | 'outside' | 'programmatic';
+
 export type Panel = {
   node: HTMLElement;
   body: HTMLElement;
   open: () => void;
-  close: () => void;
+  close: (reason?: CloseReason) => void;
   isOpen: () => boolean;
   destroy: () => void;
 };
 
 const FOCUSABLE = 'button:not([disabled]), a[href], input, [tabindex]:not([tabindex="-1"])';
 
-export function createPanel(root: ShadowRoot, headline: string, subtitle: string, onClose: () => void): Panel {
+export function createPanel(root: ShadowRoot, headline: string, subtitle: string, onClose: (reason: CloseReason) => void): Panel {
   const container = root.querySelector<HTMLElement>('.rush-root');
   const node = el('div', 'rush-panel');
   node.setAttribute('role', 'dialog');
@@ -38,7 +40,7 @@ export function createPanel(root: ShadowRoot, headline: string, subtitle: string
 
     if (event.key === 'Escape') {
       event.stopPropagation();
-      doClose();
+      doClose('escape');
       return;
     }
 
@@ -63,7 +65,7 @@ export function createPanel(root: ShadowRoot, headline: string, subtitle: string
   const handleOutside = (event: Event) => {
     if (!opened) return;
     const path = event.composedPath();
-    if (path.indexOf(node) === -1 && path.indexOf(root.host) === -1) doClose();
+    if (path.indexOf(node) === -1 && path.indexOf(root.host) === -1) doClose('outside');
   };
 
   function doOpen() {
@@ -78,7 +80,7 @@ export function createPanel(root: ShadowRoot, headline: string, subtitle: string
     if (focusable) focusable.focus();
   }
 
-  function doClose() {
+  function doClose(reason: CloseReason = 'programmatic') {
     if (!opened) return;
     opened = false;
     node.setAttribute('data-open', 'false');
@@ -86,10 +88,10 @@ export function createPanel(root: ShadowRoot, headline: string, subtitle: string
     container?.setAttribute('data-open', 'false');
     document.removeEventListener('keydown', handleKeydown, true);
     document.removeEventListener('click', handleOutside, true);
-    onClose();
+    onClose(reason);
   }
 
-  close.addEventListener('click', doClose);
+  close.addEventListener('click', () => doClose('button'));
 
   return {
     node,

@@ -16,6 +16,9 @@ export interface Campaign {
   rules: RuleSet;
   appearance: Appearance;
   ikasCampaignIds: string[];
+  publishedSnapshot?: string;
+  publishedVersion?: string;
+  publishedAt?: string;
   priority: number;
   createdAt: string;
   updatedAt: string;

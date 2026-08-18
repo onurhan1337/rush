@@ -8,7 +8,7 @@ export type ScriptStatusApiResponse = { statuses: ScriptStatus[]; publicKey: str
 export const GET = withMerchant(async (request, context) => {
   const baseUrl = getPublicBaseUrl(request);
   const settings = await ensureSettings(context);
-  const statuses = await getScriptStatus(context.ikas, context.authorizedAppId, baseUrl);
+  const statuses = await getScriptStatus(context.ikas, context.authorizedAppId, settings.publicKey, baseUrl);
   return NextResponse.json({ data: { statuses, publicKey: settings.publicKey, baseUrl } });
 });
 
@@ -23,6 +23,6 @@ export const DELETE = withMerchant(async (request, context) => {
   const baseUrl = getPublicBaseUrl(request);
   await uninstallScript(context.ikas, context.authorizedAppId);
   const settings = await ensureSettings(context);
-  const statuses = await getScriptStatus(context.ikas, context.authorizedAppId, baseUrl);
+  const statuses = await getScriptStatus(context.ikas, context.authorizedAppId, settings.publicKey, baseUrl);
   return NextResponse.json({ data: { statuses, publicKey: settings.publicKey, baseUrl } });
 });

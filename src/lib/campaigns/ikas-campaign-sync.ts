@@ -8,9 +8,6 @@ type IkasClient = ikasAdminGraphQLAPIClient<AuthToken>;
 
 export type SyncResult = { ok: true; ikasCampaignIds: string[] } | { ok: false; error: string };
 
-// A campaign can map to several ikas discounts (one per product), and the product list can
-// change between publishes — recreating from scratch keeps ikas in step with the config
-// instead of leaving orphan discounts behind.
 export async function upsertIkasCampaign(
   ikas: IkasClient,
   campaign: Campaign,
@@ -46,7 +43,6 @@ export async function upsertIkasCampaign(
 export async function deleteIkasCampaigns(ikas: IkasClient, ikasCampaignIds: string[] | undefined): Promise<void> {
   if (!ikasCampaignIds?.length) return;
   try {
-    // codegen renders list-typed variables as `string`; the wire format is a JSON array.
     await ikas.mutations.deleteCampaignList({ idList: ikasCampaignIds as unknown as string });
   } catch (error) {
     console.error('deleteCampaignList failed:', error);

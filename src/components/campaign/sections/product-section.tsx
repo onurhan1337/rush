@@ -10,10 +10,25 @@ import { ApiRequests } from '@/lib/api-requests';
 import { useIntlLocale, useT } from '@/lib/i18n';
 import { formatMoney } from '@/lib/money';
 import { cn } from '@/lib/utils';
-import type { ResolvedProduct } from '@/lib/campaigns/product';
+import { priceBasis, type ResolvedProduct } from '@/lib/campaigns/product';
 import type { OfferProductItem } from '@/lib/campaigns/types/offer-product/schema';
 import type { CampaignFormValues } from '../types';
 import { Field, Section } from './section';
+
+const DEFAULT_DISCOUNT_RATIO = 20;
+
+function roundMoney(value: number): number {
+  return Math.max(0, Math.round(value * 100) / 100);
+}
+
+function basePriceOf(product: ResolvedProduct | undefined, variantIds: string[], applicablePrice: 'SELL_PRICE' | 'DISCOUNT_PRICE'): number | null {
+  if (!product) return null;
+  const selected = product.variants.filter((variant) => variantIds.includes(variant.id));
+  if (!selected.length) return null;
+
+  const prices = Array.from(new Set(selected.map((variant) => priceBasis(variant, applicablePrice))));
+  return prices.length === 1 ? prices[0] : null;
+}
 
 type Props = {
   form: UseFormReturn<CampaignFormValues>;
@@ -31,6 +46,7 @@ export function ProductSection({ form, token, products, onProductLoaded }: Props
   const abortRef = useRef<AbortController | null>(null);
 
   const items: OfferProductItem[] = form.watch('config.items') ?? [];
+  const applicablePrice = form.watch('config.ikas.applicablePrice') ?? 'SELL_PRICE';
   const itemErrors = form.formState.errors.config?.items;
 
   useEffect(() => {
@@ -70,6 +86,9 @@ export function ProductSection({ form, token, products, onProductLoaded }: Props
       if (current.some((item) => item.productId === next.id)) return;
 
       const firstInStock = next.variants.find((variant) => variant.inStock && variant.isActive) ?? next.variants[0];
+      const applicablePrice = form.getValues('config.ikas.applicablePrice') ?? 'SELL_PRICE';
+      const base = firstInStock ? priceBasis(firstInStock, applicablePrice) : 0;
+
       form.setValue(
         'config.items',
         [
@@ -77,7 +96,7 @@ export function ProductSection({ form, token, products, onProductLoaded }: Props
           {
             productId: next.id,
             variantIds: firstInStock ? [firstInStock.id] : [],
-            offerPrice: firstInStock ? Math.max(0, Math.round(firstInStock.sellPrice * 0.8 * 100) / 100) : 0,
+            offerPrice: roundMoney(base * (1 - DEFAULT_DISCOUNT_RATIO / 100)),
             quantity: 1,
           },
         ],
@@ -151,6 +170,8 @@ export function ProductSection({ form, token, products, onProductLoaded }: Props
       {items.map((item, index) => {
         const product = products[item.productId];
         const errors = itemErrors?.[index];
+        const basePrice = basePriceOf(product, item.variantIds, applicablePrice);
+        const ratio = basePrice ? Math.round(((basePrice - item.offerPrice) / basePrice) * 100) : null;
 
         return (
           <div key={item.productId || index} className="flex flex-col gap-5 rounded-lg border p-5">
@@ -214,7 +235,13 @@ export function ProductSection({ form, token, products, onProductLoaded }: Props
                           </span>
 
                           <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                            {variant.inStock ? formatMoney(variant.sellPrice, { code: product.currencyCode, symbol: product.currencyCode ? undefined : product.currencySymbol }, locale) : t('product.outOfStock')}
+                            {variant.inStock
+                              ? formatMoney(
+                                  priceBasis(variant, applicablePrice),
+                                  { code: product.currencyCode, symbol: product.currencyCode ? undefined : product.currencySymbol },
+                                  locale,
+                                )
+                              : t('product.outOfStock')}
                           </span>
                         </button>
                       </li>
@@ -224,9 +251,32 @@ export function ProductSection({ form, token, products, onProductLoaded }: Props
               </Field>
             ) : null}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <Field label={t('pricing.offerPrice')} hint={product?.currencySymbol} error={errors?.offerPrice?.message}>
                 <Input type="number" step="0.01" min="0" {...form.register(`config.items.${index}.offerPrice`, { valueAsNumber: true })} />
+              </Field>
+              <Field
+                label={t('pricing.discountRatio')}
+                hint={basePrice ? `${t('pricing.basePrice')}: ${formatMoney(basePrice, { code: product?.currencyCode, symbol: product?.currencyCode ? undefined : product?.currencySymbol }, locale)}` : undefined}
+              >
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="99"
+                  disabled={!basePrice}
+                  value={ratio ?? ''}
+                  onChange={(event) => {
+                    if (!basePrice) return;
+                    const next = Number(event.target.value);
+                    if (Number.isNaN(next)) return;
+                    const clamped = Math.min(Math.max(next, 0), 99);
+                    form.setValue(`config.items.${index}.offerPrice`, roundMoney(basePrice * (1 - clamped / 100)), {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                  }}
+                />
               </Field>
               <Field label={t('pricing.quantity')} hint={t('pricing.quantityHint')}>
                 <Input type="number" step="1" min="1" max="50" {...form.register(`config.items.${index}.quantity`, { valueAsNumber: true })} />

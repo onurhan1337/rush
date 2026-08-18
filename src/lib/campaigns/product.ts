@@ -1,5 +1,6 @@
 import { buildMedia, type IkasMedia } from '@/lib/ikas-image';
 import type { Currency } from '@/lib/money';
+import type { ApplicablePrice } from './ikas-settings';
 import { resolveVariantTypes, type ResolvedVariantType, type VariantOption, type VariantTypeCatalog } from './variant-types';
 import type { SearchProductQueryData } from '@/lib/ikas-client/generated/graphql';
 
@@ -109,4 +110,8 @@ export function resolveProduct(
 
 export function effectivePrice(variant: ResolvedVariant): number {
   return typeof variant.discountPrice === 'number' && variant.discountPrice > 0 ? variant.discountPrice : variant.sellPrice;
+}
+
+export function priceBasis(variant: ResolvedVariant, applicablePrice: ApplicablePrice): number {
+  return applicablePrice === 'DISCOUNT_PRICE' ? effectivePrice(variant) : variant.sellPrice;
 }

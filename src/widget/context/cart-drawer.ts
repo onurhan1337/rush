@@ -32,6 +32,19 @@ const TRIGGER_SELECTORS = [
 
 const CART_PATHS = ['/sepet', '/cart', '/sepetim'];
 
+const DRAWER_SELECTORS = [
+  '[data-testid*="cart-drawer" i]',
+  '[class*="cart-drawer" i]',
+  '[class*="CartDrawer"]',
+  '[class*="cart-modal" i]',
+  '[id*="cart-drawer" i]',
+  'aside[class*="cart" i]',
+  '[role="dialog"][aria-label*="sepet" i]',
+  '[role="dialog"][aria-label*="cart" i]',
+];
+
+const DRAWER_CHECK_DELAY_MS = 900;
+
 function resolveNative(path: string[]): Invokable | undefined {
   let node: unknown = window;
   for (const key of path) {
@@ -96,6 +109,26 @@ function dispatchOpenEvents(): void {
   }
 }
 
+export function isCartDrawerOpen(): boolean {
+  for (const selector of DRAWER_SELECTORS) {
+    let candidates: NodeListOf<Element>;
+    try {
+      candidates = document.querySelectorAll(selector);
+    } catch {
+      continue;
+    }
+
+    for (const candidate of Array.from(candidates)) {
+      if (candidate.closest('[data-rush]')) continue;
+      if (!(candidate instanceof HTMLElement)) continue;
+      if (!isVisible(candidate)) continue;
+      const box = candidate.getBoundingClientRect();
+      if (box.width >= 240 && box.height >= 240) return true;
+    }
+  }
+  return false;
+}
+
 export function openCartDrawer(customSelector?: string): boolean {
   try {
     if (customSelector) {
@@ -132,4 +165,18 @@ export function cartUrl(): string {
 
 export function goToCart(): void {
   window.location.href = cartUrl();
+}
+
+export function openCartDrawerWithFallback(customSelector: string | undefined, onUnconfirmed: () => void): void {
+  const triggered = openCartDrawer(customSelector);
+
+  if (!triggered) {
+    goToCart();
+    return;
+  }
+
+  setTimeout(() => {
+    if (isCartDrawerOpen()) return;
+    onUnconfirmed();
+  }, DRAWER_CHECK_DELAY_MS);
 }

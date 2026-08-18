@@ -86,8 +86,6 @@ type Scroller = {
   destroy: () => void;
 };
 
-// A mouse without a horizontal wheel cannot pan an overflowing row, so the arrows
-// are the only reliable way to reach the variants past the edge.
 function createScroller(typeName: string): Scroller {
   const node = el('div', 'rush-variant-scroller');
   node.setAttribute('data-overflow', 'false');

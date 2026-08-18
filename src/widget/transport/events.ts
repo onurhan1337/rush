@@ -41,14 +41,10 @@ export function initEvents(eventsUrl: string, key: string): void {
   window.addEventListener('pagehide', flush);
 }
 
-// The body is sent as text/plain so the cross-origin POST stays a CORS-simple request:
-// application/json forces a preflight, which sendBeacon cannot perform — the batch was
-// dropped without a trace.
 function deliver(body: string): boolean {
   try {
     if (navigator.sendBeacon && navigator.sendBeacon(endpoint, new Blob([body], { type: CONTENT_TYPE }))) return true;
   } catch {
-    // beacon unavailable — fall through to fetch
   }
 
   try {

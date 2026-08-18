@@ -228,8 +228,6 @@ button {
   -webkit-overflow-scrolling: touch;
 }
 .rush-variants::-webkit-scrollbar { display: none; }
-/* Container padding is deliberately avoided here: Chrome leaves the trailing padding
-   of a flex scroller outside the reachable scroll range, stranding the last variant. */
 .rush-variants {
   --rush-fade-start: 0px;
   --rush-fade-end: 0px;
@@ -326,7 +324,9 @@ button {
   pointer-events: none;
 }
 .rush-cta:focus-visible { outline: 2px solid var(--rush-accent); outline-offset: 2px; }
-.rush-cta[data-state="success"] { background: #16A34A; border-color: #16A34A; color: #fff; }
+.rush-root[data-cta] .rush-cta[data-state="success"] { background: #16A34A; border-color: #16A34A; color: #FFFFFF; }
+.rush-root[data-cta] .rush-cta[data-state="error"],
+.rush-root[data-cta] .rush-cta[data-state="retry"] { background: #FFFFFF; border-color: #DC2626; color: #B91C1C; }
 
 .rush-root[data-cta="gradient"] .rush-cta { background: linear-gradient(120deg, var(--rush-accent) 0%, var(--rush-secondary) 100%); }
 .rush-root[data-cta="outline"] .rush-cta { background: transparent; color: var(--rush-accent-ink); border-color: var(--rush-accent); }
@@ -355,14 +355,30 @@ button {
 }
 
 .rush-cta:active:not([disabled]) { background-color: var(--rush-accent-active); }
-.rush-cta[disabled] { opacity: .5; cursor: not-allowed; }
+.rush-cta[disabled] { cursor: not-allowed; }
+.rush-cta[data-state="soldout"] { opacity: .5; }
+.rush-cta[aria-busy="true"] { opacity: .85; }
+
+.rush-cart-link {
+  display: block;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: var(--rush-radius-control);
+  background: var(--rush-accent-soft);
+  color: var(--rush-accent-ink);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-align: center;
+  text-decoration: none;
+}
 .rush-error { margin-top: 8px; font-size: 12px; color: #DC2626; }
 
 .rush-dots { display: inline-flex; gap: 4px; }
-.rush-dots span { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: rush-blink 1s infinite; }
+.rush-dots span { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: rush-blink 1s infinite; }
 .rush-dots span:nth-child(2) { animation-delay: .15s; }
 .rush-dots span:nth-child(3) { animation-delay: .3s; }
-@keyframes rush-blink { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+@keyframes rush-blink { 0%, 60%, 100% { opacity: .45; } 30% { opacity: 1; } }
 
 .rush-ended { margin-top: 16px; font-size: 13px; color: #8A8A8A; text-align: center; }
 

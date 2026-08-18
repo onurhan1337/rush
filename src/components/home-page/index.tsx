@@ -1,15 +1,11 @@
 import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
 
-// Props for HomePage component
 interface HomePageProps {
   token: string | null;
   storeName?: string;
 }
 
-/**
- * HomePage component
- */
 const HomePage: React.FC<HomePageProps> = ({ token, storeName }) => {
   if (!token) {
     return (

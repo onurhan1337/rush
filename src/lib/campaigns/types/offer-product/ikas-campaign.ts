@@ -6,7 +6,7 @@ import {
   type CreateCampaignInput,
 } from '@/lib/ikas-client/generated/graphql';
 import type { Campaign } from '@/models/campaign';
-import type { ResolvedProduct, ResolvedVariant } from '@/lib/campaigns/product';
+import { priceBasis, type ResolvedProduct, type ResolvedVariant } from '@/lib/campaigns/product';
 import type { CartContainsProductRule, CartTotalRule } from '@/lib/campaigns/rules/types';
 import type { IkasSettings } from '@/lib/campaigns/ikas-settings';
 import type { OfferProductConfig, OfferProductItem } from './schema';
@@ -46,9 +46,16 @@ function itemInput(
     usageLimit: settings.usageLimit,
     usageLimitPerCustomer: settings.usageLimitPerCustomer,
     hasCoupon: false,
+    applyCampaignToProductPrice: true,
     salesChannelIds: salesChannelIds.length ? salesChannelIds : undefined,
     dateRange: dateRange(campaign),
   };
+
+  const basePrices = Array.from(new Set(variants.map((variant) => priceBasis(variant, settings.applicablePrice))));
+  const cheapestBase = Math.min(...basePrices);
+  if (item.offerPrice >= cheapestBase) {
+    return { ok: false, error: `${title}: fırsat fiyatı satış fiyatından düşük olmalı` };
+  }
 
   if (cartContains && (cartContains.products.length || cartContains.variantIds.length)) {
     const usesVariants = cartContains.variantIds.length > 0;
@@ -78,18 +85,14 @@ function itemInput(
     };
   }
 
-  const sellPrices = Array.from(new Set(variants.map((variant) => variant.sellPrice)));
-  if (sellPrices.length > 1) {
+  if (basePrices.length > 1) {
     return {
       ok: false,
       error: `${title}: seçili varyantların satış fiyatları farklı. Tek bir sabit indirim tutarı uygulanamaz — aynı fiyatlı varyantları seçin veya sepet ürünü kuralı ekleyin.`,
     };
   }
 
-  const sellPrice = sellPrices[0];
-  if (item.offerPrice >= sellPrice) {
-    return { ok: false, error: `${title}: fırsat fiyatı satış fiyatından düşük olmalı` };
-  }
+  const sellPrice = basePrices[0];
 
   return {
     ok: true,

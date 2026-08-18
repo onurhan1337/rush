@@ -48,8 +48,6 @@ export class CampaignEventManager {
         type: event.type,
         sessionId: event.sessionId,
         variantId: event.variantId ?? null,
-        // Public storefront events are untrusted. Revenue must only be written
-        // by a server-side order source that can verify the actual order total.
         value: null,
       })),
     });

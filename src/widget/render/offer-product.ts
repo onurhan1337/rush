@@ -1,7 +1,8 @@
 import type { AfterConversion } from '@/lib/campaigns/types/offer-product/schema';
+import type { AddToCartOutcome } from '../context/ikas';
 import type { WidgetCampaign, WidgetProduct, WidgetVariant } from '@/lib/campaigns/widget-types';
-import { addToCart } from '../context/ikas';
-import { goToCart, openCartDrawer } from '../context/cart-drawer';
+import { addToCart, hydrateCart } from '../context/ikas';
+import { cartUrl, goToCart, openCartDrawerWithFallback } from '../context/cart-drawer';
 import { track } from '../transport/events';
 import { el } from './dom';
 import { createShadowHost } from './shadow-host';
@@ -17,10 +18,14 @@ const DISMISS_PREFIX = 'rush.dismissed.';
 const CONVERTED_PREFIX = 'rush.converted.';
 const CONVERSION_HIDE_DELAY_MS = 2600;
 
-export type RenderedCampaign = { destroy: () => void };
+export type RenderedCampaign = { destroy: () => void; isMounted: () => boolean };
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function stateKey(campaign: WidgetCampaign): string {
+  return `${campaign.id}.${campaign.version}`;
 }
 
 function isDismissed(campaignId: string): boolean {
@@ -92,10 +97,12 @@ function defaultVariant(product: WidgetProduct): WidgetVariant {
 export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign | null {
   const { data, appearance } = campaign;
   if (!data.products.length) return null;
-  if (isDismissed(campaign.id)) return null;
-  if (isConverted(campaign.id, data.afterConversion)) return null;
 
-  const endsAt = resolveEndsAt(campaign.id, data.countdown);
+  const key = stateKey(campaign);
+  if (isDismissed(key)) return null;
+  if (isConverted(key, data.afterConversion)) return null;
+
+  const endsAt = resolveEndsAt(key, data.countdown);
   if (endsAt !== undefined && endsAt <= Date.now()) return null;
 
   const maybeShadow = createShadowHost(campaign.id, appearance);
@@ -110,13 +117,14 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
   let panelMounted = false;
   let converted = false;
   let destroyed = false;
+  let pending = false;
 
   const tab = createStickyTab(data.tabLabel, appearance, () => togglePanel());
-  const panel = createPanel(shadow.root, data.headline, data.subtitle, () => {
+  const panel = createPanel(shadow.root, data.headline, data.subtitle, (reason) => {
     tab.setAttribute('aria-expanded', 'false');
-    if (converted) return;
+    if (converted || reason !== 'button') return;
 
-    markDismissed(campaign.id);
+    markDismissed(key);
     track(campaign.id, 'DISMISS');
   });
 
@@ -171,6 +179,8 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
   }
 
   async function handleCta() {
+    if (pending) return;
+
     track(campaign.id, 'CLICK', selection.id);
 
     if (activeProduct.hasOptions) {
@@ -178,9 +188,17 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
       return;
     }
 
+    pending = true;
     cta.setState('loading');
 
-    const result = await addToCart(selection.id, activeProduct.quantity);
+    let result: AddToCartOutcome;
+    try {
+      result = await addToCart(selection.id, activeProduct.quantity);
+    } finally {
+      pending = false;
+    }
+
+    if (destroyed) return;
 
     if (result.unavailable) {
       window.location.href = activeProduct.url;
@@ -188,13 +206,15 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
     }
 
     if (!result.success) {
-      cta.setState('error', result.error || 'Ürün sepete eklenemedi.');
+      const message = result.timedOut ? 'Sepet yanıt vermedi, tekrar deneyin.' : result.error || 'Ürün sepete eklenemedi.';
+      cta.setState('retry', message);
       return;
     }
 
     track(campaign.id, 'ADD_TO_CART', selection.id, selection.offerPrice * activeProduct.quantity);
     converted = true;
     cta.setState('success');
+    void hydrateCart();
     retireAfterConversion();
     revealCart();
   }
@@ -202,8 +222,17 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
   function retireAfterConversion() {
     if (data.afterConversion === 'keep') return;
 
-    markConverted(campaign.id, data.afterConversion);
+    markConverted(key, data.afterConversion);
     setTimeout(() => destroy(), CONVERSION_HIDE_DELAY_MS);
+  }
+
+  function showCartLink() {
+    if (destroyed || panel.body.querySelector('.rush-cart-link')) return;
+
+    const link = el('a', 'rush-cart-link', 'Sepete git');
+    link.href = cartUrl();
+    panel.body.appendChild(link);
+    panel.open();
   }
 
   function revealCart() {
@@ -214,13 +243,13 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
 
     if (data.afterAddToCart === 'drawer') {
       setTimeout(() => {
-        panel.close();
-        openCartDrawer(data.cartTriggerSelector || undefined);
+        panel.close('programmatic');
+        openCartDrawerWithFallback(data.cartTriggerSelector || undefined, showCartLink);
       }, 700);
       return;
     }
 
-    setTimeout(() => panel.close(), 2000);
+    setTimeout(() => panel.close('programmatic'), 2000);
   }
 
   function mountPanelBody() {
@@ -246,7 +275,7 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
 
   function togglePanel() {
     if (panel.isOpen()) {
-      panel.close();
+      panel.close('button');
       return;
     }
 
@@ -284,5 +313,5 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
     shadow.destroy();
   }
 
-  return { destroy };
+  return { destroy, isMounted: () => !destroyed && shadow.host.isConnected };
 }

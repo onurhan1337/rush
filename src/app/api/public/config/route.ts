@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIkas } from '@/helpers/api-helpers';
 import { getCampaignType } from '@/lib/campaigns/registry';
+import { readSnapshot, snapshotToCampaign } from '@/lib/campaigns/publish-snapshot';
 import { createProductLoader } from '@/lib/ikas-products';
 import { isValidPublicKeyFormat } from '@/lib/public-key';
 import { getPublicBaseUrl } from '@/lib/public-url';
@@ -10,10 +11,15 @@ import { MerchantSettingsManager } from '@/models/merchant-settings/manager';
 import type { ResolvedProduct } from '@/lib/campaigns/product';
 import type { WidgetCampaign, WidgetConfigPayload } from '@/lib/campaigns/widget-types';
 
+const CACHE_CONTROL = 'public, max-age=0, s-maxage=30, stale-while-revalidate=60';
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Cache-Control': 'public, max-age=60',
+  'Cache-Control': CACHE_CONTROL,
+  Vary: 'Origin',
 };
+
+export const dynamic = 'force-dynamic';
 
 function payload(body: WidgetConfigPayload, status = 200) {
   return NextResponse.json(body, { status, headers: CORS_HEADERS });
@@ -25,7 +31,7 @@ export async function OPTIONS() {
 
 export async function GET(request: NextRequest) {
   const eventsUrl = `${getPublicBaseUrl(request)}/api/public/events`;
-  const empty: WidgetConfigPayload = { campaigns: [], eventsUrl };
+  const empty: WidgetConfigPayload = { campaigns: [], eventsUrl, version: '0' };
 
   try {
     const key = new URL(request.url).searchParams.get('key');
@@ -42,8 +48,11 @@ export async function GET(request: NextRequest) {
 
     const loader = createProductLoader(getIkas(authToken), settings.merchantId);
     const widgetCampaigns: WidgetCampaign[] = [];
+    const versions: string[] = [];
 
-    for (const campaign of campaigns) {
+    for (const stored of campaigns) {
+      const snapshot = readSnapshot(stored.publishedSnapshot);
+      const campaign = snapshot ? snapshotToCampaign(stored, snapshot) : stored;
       const definition = getCampaignType(campaign.type);
       if (!definition) continue;
 
@@ -55,10 +64,13 @@ export async function GET(request: NextRequest) {
       if (!products.length) continue;
 
       const widgetCampaign = definition.toWidgetPayload(campaign, parsedConfig.data, products);
-      if (widgetCampaign) widgetCampaigns.push(widgetCampaign);
+      if (!widgetCampaign) continue;
+
+      widgetCampaigns.push(widgetCampaign);
+      versions.push(stored.publishedVersion ?? stored.updatedAt);
     }
 
-    return payload({ campaigns: widgetCampaigns, eventsUrl });
+    return payload({ campaigns: widgetCampaigns, eventsUrl, version: versions.join('.') || '0' });
   } catch (error) {
     console.error('Public config failed:', error);
     return payload(empty);

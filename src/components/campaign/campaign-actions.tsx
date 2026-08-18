@@ -16,11 +16,12 @@ type Props = {
   token: string;
   saving: boolean;
   savedAt: Date | null;
+  pendingPublish: boolean;
   onBeforePublish: () => Promise<boolean>;
-  onCampaignChange: (campaign: Campaign) => void;
+  onCampaignChange: (campaign: Campaign, pendingPublish: boolean) => void;
 };
 
-export function CampaignActions({ campaign, token, saving, savedAt, onBeforePublish, onCampaignChange }: Props) {
+export function CampaignActions({ campaign, token, saving, savedAt, pendingPublish, onBeforePublish, onCampaignChange }: Props) {
   const t = useT();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -39,7 +40,7 @@ export function CampaignActions({ campaign, token, saving, savedAt, onBeforePubl
       const response = await ApiRequests.ikas.publishCampaign(token, campaign.id, action);
       const next = response.data?.data?.campaign;
       if (next) {
-        onCampaignChange(next);
+        onCampaignChange(next, response.data?.data?.pendingPublish ?? false);
         toast.success(t(action === 'publish' ? 'editor.published' : 'editor.paused'));
       }
     } catch (error: unknown) {
@@ -66,6 +67,8 @@ export function CampaignActions({ campaign, token, saving, savedAt, onBeforePubl
     <div className="flex items-center gap-3">
       <Badge variant={campaign.status === 'ACTIVE' ? 'default' : 'secondary'}>{t(`status.${campaign.status}` as TranslationKey)}</Badge>
 
+      {pendingPublish ? <Badge variant="outline">{t('editor.pendingPublish')}</Badge> : null}
+
       <span className="text-xs text-muted-foreground">
         {saving ? t('common.saving') : savedAt ? `${t('common.savedAt')} ${savedAt.toLocaleTimeString()}` : ''}
       </span>
@@ -76,12 +79,18 @@ export function CampaignActions({ campaign, token, saving, savedAt, onBeforePubl
         </Button>
 
         {campaign.status === 'ACTIVE' ? (
-          <Button type="button" variant="outline" onClick={() => run('pause')} disabled={busy}>
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <Pause className="size-4" />}
-            {t('editor.pause')}
-          </Button>
+          <>
+            <Button type="button" variant="outline" onClick={() => run('pause')} disabled={busy}>
+              {busy ? <Loader2 className="size-4 animate-spin" /> : <Pause className="size-4" />}
+              {t('editor.pause')}
+            </Button>
+            <Button type="button" onClick={() => run('publish')} disabled={busy || saving}>
+              {busy ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}
+              {t('editor.republish')}
+            </Button>
+          </>
         ) : (
-          <Button type="button" onClick={() => run('publish')} disabled={busy}>
+          <Button type="button" onClick={() => run('publish')} disabled={busy || saving}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}
             {t('editor.publish')}
           </Button>

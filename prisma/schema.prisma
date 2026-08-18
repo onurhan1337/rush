@@ -7,8 +7,6 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  // Pooled connection for the app, direct connection for migrations: PgBouncer
-  // cannot run the advisory locks and DDL transactions migrate needs.
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
@@ -45,6 +43,9 @@ model Campaign {
   appearance      String    @default("{}")
   ikasCampaignId  String?
   ikasCampaignIds String    @default("[]")
+  publishedSnapshot String?
+  publishedVersion  String?
+  publishedAt       DateTime?
   priority        Int       @default(0)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -92,6 +93,14 @@ model StorefrontScript {
   deleted         Boolean  @default(false)
 
   @@unique([authorizedAppId, storefrontId])
+}
+
+model WebhookEvent {
+  id         String   @id
+  scope      String
+  receivedAt DateTime @default(now())
+
+  @@index([receivedAt])
 }
 
 model MerchantSettings {

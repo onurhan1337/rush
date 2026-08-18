@@ -35,7 +35,6 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         try {
           window.sessionStorage.setItem(LOCALE_KEY, next);
         } catch {
-          // caching the locale is optional
         }
       })
       .catch(() => {});

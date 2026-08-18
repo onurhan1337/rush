@@ -17,8 +17,6 @@ export function CountdownSection({ form }: { form: UseFormReturn<CampaignFormVal
   const t = useT();
   const mode = form.watch('config.countdown.mode');
 
-  // Switching to a fixed countdown with no date would make the whole form invalid, so
-  // seed a sensible date instead of leaving the merchant in a broken state.
   const changeMode = (next: 'fixed' | 'perSession') => {
     form.setValue('config.countdown.mode', next, { shouldDirty: true });
 

@@ -30,14 +30,29 @@ const INITIAL_CONTEXT: PreviewContext = {
   isFirstVisit: true,
 };
 
-export function CampaignForm({ campaign: initialCampaign, token }: { campaign: Campaign; token: string }) {
+export function CampaignForm({
+  campaign: initialCampaign,
+  token,
+  initialPendingPublish,
+}: {
+  campaign: Campaign;
+  token: string;
+  initialPendingPublish: boolean;
+}) {
   const t = useT();
   const [campaign, setCampaign] = useState(initialCampaign);
+  const [pendingPublish, setPendingPublish] = useState(initialPendingPublish);
   const [products, setProducts] = useState<Record<string, ResolvedProduct>>({});
   const [context, setContext] = useState(INITIAL_CONTEXT);
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
 
-  const { form, saving, savedAt } = useCampaignForm(campaign, token);
+  const handleSaved = useCallback((pending: boolean) => setPendingPublish(pending), []);
+  const handleCampaignChange = useCallback((next: Campaign, pending: boolean) => {
+    setCampaign(next);
+    setPendingPublish(pending);
+  }, []);
+
+  const { form, saving, savedAt } = useCampaignForm(campaign, token, handleSaved);
   const values = form.watch();
   const payload = usePreviewPayload(campaign, values, products);
 
@@ -92,8 +107,9 @@ export function CampaignForm({ campaign: initialCampaign, token }: { campaign: C
           token={token}
           saving={saving}
           savedAt={savedAt}
+          pendingPublish={pendingPublish}
           onBeforePublish={validateBeforePublish}
-          onCampaignChange={setCampaign}
+          onCampaignChange={handleCampaignChange}
         />
       </div>
 

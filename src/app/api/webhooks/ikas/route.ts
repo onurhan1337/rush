@@ -7,6 +7,7 @@ import { deleteIkasCampaigns } from '@/lib/campaigns/ikas-campaign-sync';
 import { uninstallScript } from '@/lib/storefront-script';
 import { AuthTokenManager } from '@/models/auth-token/manager';
 import { CampaignManager } from '@/models/campaign/manager';
+import { WebhookEventManager } from '@/models/webhook-event/manager';
 
 const UNINSTALL_SCOPES = ['store/app/deleted', 'store/app/uninstalled', 'store/authorizedApp/deleted'];
 
@@ -37,6 +38,9 @@ export async function POST(request: NextRequest) {
 
     const { scope, authorizedAppId } = webhook;
 
+    const firstDelivery = await WebhookEventManager.markProcessed(webhook.id, scope);
+    if (!firstDelivery) return NextResponse.json({ ok: true, duplicate: true });
+
     if (!UNINSTALL_SCOPES.includes(scope)) return NextResponse.json({ ok: true });
 
     const authToken = await AuthTokenManager.get(authorizedAppId);
@@ -52,6 +56,7 @@ export async function POST(request: NextRequest) {
     await uninstallScript(ikas, authorizedAppId);
     await CampaignManager.endAll(authorizedAppId);
     await AuthTokenManager.delete(authorizedAppId);
+    await WebhookEventManager.prune();
 
     return NextResponse.json({ ok: true });
   } catch (error) {

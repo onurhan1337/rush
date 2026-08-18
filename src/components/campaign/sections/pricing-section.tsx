@@ -4,18 +4,19 @@ import type { UseFormReturn } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { useIntlLocale, useT } from '@/lib/i18n';
 import { currencySymbol, formatMoney } from '@/lib/money';
-import type { ResolvedProduct } from '@/lib/campaigns/product';
+import { priceBasis, type ResolvedProduct } from '@/lib/campaigns/product';
+import type { ApplicablePrice } from '@/lib/campaigns/ikas-settings';
 import type { OfferProductItem } from '@/lib/campaigns/types/offer-product/schema';
 import type { CampaignFormValues } from '../types';
 import { Field, Section } from './section';
 
 type Summary = { state: 'mixed' } | { state: 'invalid' } | { state: 'ok'; discount: number; ratio: number };
 
-function summarize(product: ResolvedProduct, item: OfferProductItem): Summary | null {
+function summarize(product: ResolvedProduct, item: OfferProductItem, applicablePrice: ApplicablePrice): Summary | null {
   const selected = product.variants.filter((variant) => item.variantIds.includes(variant.id));
   if (!selected.length) return null;
 
-  const prices = Array.from(new Set(selected.map((variant) => variant.sellPrice)));
+  const prices = Array.from(new Set(selected.map((variant) => priceBasis(variant, applicablePrice))));
   if (prices.length > 1) return { state: 'mixed' };
 
   const sellPrice = prices[0];
@@ -29,13 +30,14 @@ export function PricingSection({ form, products }: { form: UseFormReturn<Campaig
   const t = useT();
   const locale = useIntlLocale();
   const items: OfferProductItem[] = form.watch('config.items') ?? [];
+  const applicablePrice: ApplicablePrice = form.watch('config.ikas.applicablePrice') ?? 'SELL_PRICE';
   const override = form.watch('config.currencySymbol');
 
   const rows = items
     .map((item) => {
       const product = products[item.productId];
       if (!product) return null;
-      const summary = summarize(product, item);
+      const summary = summarize(product, item, applicablePrice);
       return summary ? { product, item, summary } : null;
     })
     .filter((row): row is { product: ResolvedProduct; item: OfferProductItem; summary: Summary } => !!row);

@@ -2,12 +2,14 @@ import { evaluateRules, requiresCart } from '@/lib/campaigns/rules/evaluate';
 import type { CartSnapshot, PageType, RuleContext } from '@/lib/campaigns/rules/types';
 import type { WidgetCampaign, WidgetConfigPayload } from '@/lib/campaigns/widget-types';
 import { getCart, getPageType, getPath, hydrateCart, isCartResolved, isLoggedIn, onCartChange, setCart, subscribeCart } from './context/ikas';
+import { onRouteChange } from './context/navigation';
 import { fetchConfig, listenForPreviewConfig } from './transport/config';
 import { initEvents } from './transport/events';
 import { getRenderer } from './render/registry';
 import type { RenderedCampaign } from './render/offer-product';
 
 const FIRST_VISIT_KEY = 'rush.seen';
+const CART_REFRESH_INTERVAL_MS = 15_000;
 
 type PreviewContext = {
   cart?: CartSnapshot;
@@ -21,6 +23,8 @@ let previewContext: PreviewContext = {};
 let previewMode = false;
 const rendered = new Map<string, RenderedCampaign>();
 let campaigns: WidgetCampaign[] = [];
+let configVersion = '';
+let lastCartRefreshAt = 0;
 
 function isFirstVisit(): boolean {
   try {
@@ -51,31 +55,47 @@ function reconcile(): void {
   for (let i = 0; i < campaigns.length; i++) {
     const campaign = campaigns[i];
     const needsCart = requiresCart(campaign.rules);
-
-    // A cart-dependent rule stays unsatisfied until the cart is known: never show a
-    // discount we cannot yet justify.
     const cartKnown = previewMode || isCartResolved();
     const matches = needsCart && !cartKnown ? false : evaluateRules(campaign.rules, context);
 
     const existing = rendered.get(campaign.id);
 
-    if (matches && !existing) {
+    if (existing && !existing.isMounted()) {
+      existing.destroy();
+      rendered.delete(campaign.id);
+    }
+
+    if (matches && !rendered.has(campaign.id)) {
       const renderer = getRenderer(campaign.type);
       if (!renderer) continue;
       const instance = renderer(campaign);
       if (instance) rendered.set(campaign.id, instance);
-    } else if (!matches && existing) {
-      existing.destroy();
+      continue;
+    }
+
+    const stillRendered = rendered.get(campaign.id);
+    if (!matches && stillRendered) {
+      stillRendered.destroy();
       rendered.delete(campaign.id);
     }
   }
 }
 
-function applyPayload(payload: WidgetConfigPayload, publicKey: string): void {
+function destroyAll(): void {
   for (const [, instance] of rendered) instance.destroy();
   rendered.clear();
+}
 
-  campaigns = payload.campaigns ?? [];
+function applyPayload(payload: WidgetConfigPayload, publicKey: string): void {
+  const nextVersion = payload.version ?? '';
+  const sameVersion = !previewMode && !!configVersion && configVersion === nextVersion;
+
+  if (!sameVersion) {
+    destroyAll();
+    campaigns = payload.campaigns ?? [];
+    configVersion = nextVersion;
+  }
+
   if (payload.eventsUrl && !previewMode) initEvents(payload.eventsUrl, publicKey);
   reconcile();
 }
@@ -86,12 +106,18 @@ function scheduleIdle(callback: () => void): void {
   else setTimeout(callback, 1);
 }
 
+function refreshCart(force: boolean): void {
+  const now = Date.now();
+  if (!force && now - lastCartRefreshAt < CART_REFRESH_INTERVAL_MS) return;
+  lastCartRefreshAt = now;
+  void hydrateCart();
+}
+
 function boot(): void {
   const script = document.currentScript as HTMLScriptElement | null;
   const publicKey = script?.getAttribute('data-rush-key') ?? '';
   const preview = script?.getAttribute('data-rush-preview') === '1';
 
-  // Subscribe synchronously at parse time — the IkasEvents stub is ready before hydration.
   subscribeCart();
 
   if (preview) {
@@ -109,15 +135,24 @@ function boot(): void {
 
   const origin = script?.src ? new URL(script.src).origin : location.origin;
 
-  scheduleIdle(() => {
-    onCartChange(() => reconcile());
-    void hydrateCart();
-
+  const loadConfig = () =>
     fetchConfig(origin, publicKey)
       .then((payload) => applyPayload(payload, publicKey))
       .catch(() => {
-        // config unavailable — the storefront is unaffected
+        return;
       });
+
+  scheduleIdle(() => {
+    onCartChange(() => reconcile());
+    refreshCart(true);
+
+    onRouteChange(() => {
+      refreshCart(false);
+      reconcile();
+      void loadConfig();
+    });
+
+    void loadConfig();
   });
 }
 

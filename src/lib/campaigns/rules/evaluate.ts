@@ -37,9 +37,6 @@ function matchesAnyRef(refs: EntityRef[], path: string): boolean {
   return false;
 }
 
-// Landing on the exact URL of a picked product or category is itself proof of the page
-// type, so a theme the storefront detection cannot read does not silently disable the
-// rule.
 function scopedPageType(rule: Extract<Rule, { kind: 'page_type' }>, context: RuleContext): PageType {
   if (context.path) {
     if (rule.products.length && matchesAnyRef(rule.products, context.path)) return 'product';
@@ -52,8 +49,6 @@ function evaluatePageType(rule: Extract<Rule, { kind: 'page_type' }>, context: R
   const pageType = scopedPageType(rule, context);
   if (rule.include.length && rule.include.indexOf(pageType) === -1) return false;
 
-  // Without a storefront path — preview, for instance — the narrower product and
-  // category scopes cannot be resolved, so the page type decides on its own.
   if (!context.path) return true;
 
   if (pageType === 'product' && rule.products.length) return matchesAnyRef(rule.products, context.path);

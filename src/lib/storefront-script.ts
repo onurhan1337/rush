@@ -24,14 +24,12 @@ export type ScriptStatus = {
   scriptId?: string;
 };
 
-// The base URL is part of the version so moving to a new tunnel/domain marks every
-// installed script as out of date instead of silently pointing at a dead host.
-export function scriptVersion(baseUrl: string): string {
-  return crypto.createHash('sha1').update(`${baseUrl}|1`).digest('hex').slice(0, 8);
+export function scriptVersion(baseUrl: string, publicKey: string): string {
+  return crypto.createHash('sha1').update(`${baseUrl}|${publicKey}|2`).digest('hex').slice(0, 8);
 }
 
 export function buildScriptContent(publicKey: string, baseUrl: string): string {
-  const src = `${baseUrl}/rush.js?v=${scriptVersion(baseUrl)}`;
+  const src = `${baseUrl}/rush.js?v=${scriptVersion(baseUrl, publicKey)}`;
   return `<script src="${src}" data-rush-key="${publicKey}" defer></script>`;
 }
 
@@ -52,12 +50,12 @@ export async function listStorefronts(ikas: IkasClient): Promise<StorefrontInfo[
   });
 }
 
-export async function getScriptStatus(ikas: IkasClient, authorizedAppId: string, baseUrl: string): Promise<ScriptStatus[]> {
+export async function getScriptStatus(ikas: IkasClient, authorizedAppId: string, publicKey: string, baseUrl: string): Promise<ScriptStatus[]> {
   const [storefronts, records] = await Promise.all([listStorefronts(ikas), StorefrontScriptManager.list(authorizedAppId)]);
-  const version = scriptVersion(baseUrl);
+  const version = scriptVersion(baseUrl, publicKey);
 
   return storefronts.map((storefront) => {
-    const record = records.find((item) => item.storefrontId === storefront.id);
+    const record = records.find((item) => item.storefrontId === storefront.id && !item.deleted);
     return {
       storefront,
       installed: !!record,
@@ -69,7 +67,7 @@ export async function getScriptStatus(ikas: IkasClient, authorizedAppId: string,
 
 export async function installScript(ikas: IkasClient, authorizedAppId: string, publicKey: string, baseUrl: string): Promise<ScriptStatus[]> {
   const storefronts = await listStorefronts(ikas);
-  const version = scriptVersion(baseUrl);
+  const version = scriptVersion(baseUrl, publicKey);
   const scriptContent = buildScriptContent(publicKey, baseUrl);
 
   for (const storefront of storefronts) {
@@ -108,7 +106,7 @@ export async function installScript(ikas: IkasClient, authorizedAppId: string, p
     }
   }
 
-  return getScriptStatus(ikas, authorizedAppId, baseUrl);
+  return getScriptStatus(ikas, authorizedAppId, publicKey, baseUrl);
 }
 
 export async function uninstallScript(ikas: IkasClient, authorizedAppId: string): Promise<void> {

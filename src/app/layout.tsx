@@ -10,7 +10,6 @@ const robotoSlabHeading = Roboto_Slab({subsets:['latin'],variable:'--font-headin
 
 const nunitoSans = Nunito_Sans({subsets:['latin'],variable:'--font-sans'});
 
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="tr" className={cn("font-sans", nunitoSans.variable, robotoSlabHeading.variable)}>

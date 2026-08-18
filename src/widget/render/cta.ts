@@ -1,6 +1,6 @@
 import { el, upperCase } from './dom';
 
-export type CtaState = 'idle' | 'loading' | 'success' | 'error' | 'soldout' | 'redirect';
+export type CtaState = 'idle' | 'loading' | 'success' | 'error' | 'soldout' | 'redirect' | 'retry';
 
 export type Cta = {
   node: HTMLElement;
@@ -12,6 +12,7 @@ const LABELS: Partial<Record<CtaState, string>> = {
   success: '✓ Sepete eklendi',
   soldout: 'Tükendi',
   redirect: 'Ürüne git',
+  retry: 'Tekrar dene',
 };
 
 export function createCta(label: string, onClick: () => void): Cta {
@@ -30,9 +31,11 @@ export function createCta(label: string, onClick: () => void): Cta {
     error.style.display = 'none';
     button.disabled = state === 'loading' || state === 'soldout';
     button.setAttribute('data-state', state);
+    button.setAttribute('aria-busy', state === 'loading' ? 'true' : 'false');
     button.textContent = '';
 
     if (state === 'loading') {
+      button.setAttribute('aria-label', 'Sepete ekleniyor');
       const dots = el('span', 'rush-dots');
       dots.appendChild(el('span'));
       dots.appendChild(el('span'));
@@ -41,9 +44,10 @@ export function createCta(label: string, onClick: () => void): Cta {
       return;
     }
 
+    button.removeAttribute('aria-label');
     button.textContent = upperCase(LABELS[state] ?? label);
 
-    if (state === 'error' && message) {
+    if ((state === 'error' || state === 'retry') && message) {
       error.textContent = message;
       error.style.display = '';
     }

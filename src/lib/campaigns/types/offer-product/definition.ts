@@ -1,6 +1,6 @@
 import type { CampaignTypeDefinition } from '@/lib/campaigns/definition';
 import type { OfferProductWidgetData, WidgetProduct, WidgetVariant } from '@/lib/campaigns/widget-types';
-import { effectivePrice, type ResolvedProduct } from '@/lib/campaigns/product';
+import { priceBasis, type ResolvedProduct } from '@/lib/campaigns/product';
 import { narrowVariantTypes } from '@/lib/campaigns/variant-types';
 import { mapOfferProductToIkasCampaign } from './ikas-campaign';
 import { OFFER_PRODUCT_DEFAULT_CONFIG, offerProductConfigSchema, type OfferProductConfig, type OfferProductItem } from './schema';
@@ -18,7 +18,7 @@ function toWidgetProduct(item: OfferProductItem, product: ResolvedProduct, confi
     label: variant.label,
     options: variant.options,
     media: variant.media,
-    sellPrice: effectivePrice(variant),
+    sellPrice: priceBasis(variant, config.ikas.applicablePrice),
     offerPrice: item.offerPrice,
     inStock: variant.inStock,
   }));
@@ -78,6 +78,7 @@ export const offerProductDefinition: CampaignTypeDefinition<OfferProductConfig> 
 
     return {
       id: campaign.id,
+      version: campaign.publishedVersion ?? campaign.updatedAt,
       type: campaign.type,
       rules: campaign.rules,
       appearance: campaign.appearance,

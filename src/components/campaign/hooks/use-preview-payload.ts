@@ -16,7 +16,7 @@ export function usePreviewPayload(
   const productKey = Object.keys(products).sort().join(',');
 
   return useMemo(() => {
-    const empty: WidgetConfigPayload = { campaigns: [], eventsUrl: '' };
+    const empty: WidgetConfigPayload = { campaigns: [], eventsUrl: '', version: 'preview' };
     if (!productKey) return empty;
 
     const definition = getCampaignType(campaign.type);
@@ -36,7 +36,7 @@ export function usePreviewPayload(
     };
 
     const widgetCampaign = definition.toWidgetPayload(draft, parsed.data, Object.values(products));
-    return widgetCampaign ? { campaigns: [widgetCampaign], eventsUrl: '' } : empty;
+    return widgetCampaign ? { campaigns: [{ ...widgetCampaign, version: 'preview' }], eventsUrl: '', version: 'preview' } : empty;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign, serialized, productKey]);
 }

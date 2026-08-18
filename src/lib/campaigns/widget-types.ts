@@ -46,6 +46,7 @@ export type OfferProductWidgetData = {
 
 export type WidgetCampaign = {
   id: string;
+  version: string;
   type: string;
   rules: RuleSet;
   appearance: Appearance;
@@ -55,4 +56,5 @@ export type WidgetCampaign = {
 export type WidgetConfigPayload = {
   campaigns: WidgetCampaign[];
   eventsUrl: string;
+  version: string;
 };
