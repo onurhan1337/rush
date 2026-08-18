@@ -347,12 +347,31 @@ button {
   .rush-variant:hover:not([disabled]) { border-color: #A3A3A3; }
   .rush-variant-scroll:hover:not([disabled]) { background: #F5F5F5; }
   .rush-close:hover { color: #0A0A0A; transform: rotate(90deg); }
+  .rush-cart-link:hover { background: var(--rush-accent-soft-hover); }
 }
 
 @keyframes rush-sheen {
   0% { transform: translateX(-110%); }
   100% { transform: translateX(110%); }
 }
+
+/* State + selection colors must outrank every hover/active rule above. */
+.rush-root[data-cta] .rush-cta[data-state="success"]:hover:not([disabled]),
+.rush-root[data-cta] .rush-cta[data-state="success"]:active:not([disabled]) {
+  background: #15803D;
+  border-color: #15803D;
+  color: #FFFFFF;
+}
+.rush-root[data-cta] .rush-cta[data-state="error"]:hover:not([disabled]),
+.rush-root[data-cta] .rush-cta[data-state="error"]:active:not([disabled]),
+.rush-root[data-cta] .rush-cta[data-state="retry"]:hover:not([disabled]),
+.rush-root[data-cta] .rush-cta[data-state="retry"]:active:not([disabled]) {
+  background: #FEF2F2;
+  border-color: #B91C1C;
+  color: #B91C1C;
+}
+.rush-variant[aria-pressed="true"]:hover:not([disabled]),
+.rush-variant[aria-pressed="true"]:active:not([disabled]) { border-color: var(--rush-accent); }
 
 .rush-cta:active:not([disabled]) { background-color: var(--rush-accent-active); }
 .rush-cta[disabled] { cursor: not-allowed; }
