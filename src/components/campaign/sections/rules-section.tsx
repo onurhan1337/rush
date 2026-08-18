@@ -14,13 +14,21 @@ import { Field, Section } from './section';
 
 const BLANK_RULES: Record<Rule['kind'], Rule> = {
   cart_total: { kind: 'cart_total', op: 'gte', amount: 0 },
-  cart_contains_product: { kind: 'cart_contains_product', productIds: [], variantIds: [] },
-  page_type: { kind: 'page_type', include: [] },
+  cart_contains_product: { kind: 'cart_contains_product', products: [], variantIds: [] },
+  page_type: { kind: 'page_type', include: [], products: [], categories: [] },
   visitor: { kind: 'visitor' },
   schedule: { kind: 'schedule' },
 };
 
-export function RulesSection({ form, campaignType }: { form: UseFormReturn<CampaignFormValues>; campaignType: string }) {
+export function RulesSection({
+  form,
+  campaignType,
+  token,
+}: {
+  form: UseFormReturn<CampaignFormValues>;
+  campaignType: string;
+  token: string;
+}) {
   const t = useT();
   const rules = form.watch('rules');
   const supported = getCampaignType(campaignType)?.supportedRules ?? [];
@@ -51,6 +59,7 @@ export function RulesSection({ form, campaignType }: { form: UseFormReturn<Campa
               key={`${rule.kind}-${index}`}
               rule={rule}
               index={index}
+              token={token}
               onChange={(next) => setConditions(rules.conditions.map((item, position) => (position === index ? next : item)))}
               onRemove={() => setConditions(rules.conditions.filter((_, position) => position !== index))}
             />

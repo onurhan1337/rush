@@ -2,7 +2,7 @@ import type { IkasMedia } from '@/lib/ikas-image';
 import type { Currency } from '@/lib/money';
 import type { Appearance } from './appearance';
 import type { RuleSet } from './rules/types';
-import type { AfterAddToCart } from './types/offer-product/schema';
+import type { AfterAddToCart, AfterConversion } from './types/offer-product/schema';
 import type { ResolvedVariantType, VariantOption } from './variant-types';
 
 export type WidgetVariant = {
@@ -38,6 +38,7 @@ export type OfferProductWidgetData = {
   ctaLabel: string;
   tabLabel: string;
   afterAddToCart: AfterAddToCart;
+  afterConversion: AfterConversion;
   cartTriggerSelector: string;
   countdown: WidgetCountdown;
   products: WidgetProduct[];

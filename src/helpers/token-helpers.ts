@@ -154,11 +154,13 @@ export class TokenHelpers {
    *
    * @remarks
    * - Uses HMAC-SHA256 algorithm for signature generation
-   * - Compares signatures using strict equality
+   * - Compares signatures in constant time so the comparison cannot be used as an
+   *   oracle to reconstruct a valid signature byte by byte
    * - Should be called before exchanging authorization code for tokens
    */
   static validateCodeSignature = (code: string, receivedSignature: string, secret: string): boolean => {
-    const expectedSignature = crypto.createHmac('sha256', secret).update(code, 'utf8').digest('hex');
-    return expectedSignature === receivedSignature;
+    const expected = Buffer.from(crypto.createHmac('sha256', secret).update(code, 'utf8').digest('hex'), 'utf8');
+    const received = Buffer.from(receivedSignature, 'utf8');
+    return expected.length === received.length && crypto.timingSafeEqual(expected, received);
   };
 }

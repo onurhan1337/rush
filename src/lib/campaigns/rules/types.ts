@@ -2,6 +2,12 @@ export type RuleKind = 'cart_total' | 'cart_contains_product' | 'page_type' | 'v
 
 export type PageType = 'home' | 'product' | 'collection' | 'cart' | 'other';
 
+export type EntityRef = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 export type CartTotalRule = {
   kind: 'cart_total';
   op: 'gte' | 'lte';
@@ -10,13 +16,15 @@ export type CartTotalRule = {
 
 export type CartContainsProductRule = {
   kind: 'cart_contains_product';
-  productIds: string[];
+  products: EntityRef[];
   variantIds: string[];
 };
 
 export type PageTypeRule = {
   kind: 'page_type';
   include: PageType[];
+  products: EntityRef[];
+  categories: EntityRef[];
 };
 
 export type VisitorRule = {
@@ -55,6 +63,7 @@ export type CartSnapshot = {
 export type RuleContext = {
   cart?: CartSnapshot;
   pageType: PageType;
+  path: string;
   isLoggedIn: boolean;
   isFirstVisit: boolean;
   now: number;

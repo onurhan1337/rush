@@ -66,6 +66,7 @@ export const offerProductDefinition: CampaignTypeDefinition<OfferProductConfig> 
       ctaLabel: config.ctaLabel,
       tabLabel: config.tabLabel,
       afterAddToCart: config.afterAddToCart,
+      afterConversion: config.afterConversion,
       cartTriggerSelector: config.cartTriggerSelector,
       countdown: {
         mode: config.countdown.mode,

@@ -4,6 +4,7 @@ import { ApiResponseType } from '../globals/constants';
 import type { CreateCampaignApiResponse, ListCampaignsApiResponse } from '../app/api/ikas/campaigns/route';
 import type { GetCampaignApiResponse } from '../app/api/ikas/campaigns/[id]/route';
 import type { PublishCampaignApiResponse } from '../app/api/ikas/campaigns/[id]/publish/route';
+import type { SearchCategoriesApiResponse } from '../app/api/ikas/categories/search/route';
 import type { SearchProductsApiResponse } from '../app/api/ikas/products/search/route';
 import type { ScriptStatusApiResponse } from '../app/api/ikas/script/route';
 import type { StatsApiResponse } from '../app/api/ikas/stats/route';
@@ -60,6 +61,9 @@ export const ApiRequests = {
 
     searchProducts: (token: string, params: { q?: string; id?: string }) =>
       makeGetRequest<SearchProductsApiResponse>({ url: '/api/ikas/products/search', token, data: params }),
+
+    searchCategories: (token: string, params: { q?: string }) =>
+      makeGetRequest<SearchCategoriesApiResponse>({ url: '/api/ikas/categories/search', token, data: params }),
 
     getScript: (token: string) => makeGetRequest<ScriptStatusApiResponse>({ url: '/api/ikas/script', token }),
     installScript: (token: string) => makePostRequest<ScriptStatusApiResponse>({ url: '/api/ikas/script', token }),

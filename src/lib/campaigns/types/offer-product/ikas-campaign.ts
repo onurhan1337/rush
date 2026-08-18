@@ -50,7 +50,7 @@ function itemInput(
     dateRange: dateRange(campaign),
   };
 
-  if (cartContains && (cartContains.productIds.length || cartContains.variantIds.length)) {
+  if (cartContains && (cartContains.products.length || cartContains.variantIds.length)) {
     const usesVariants = cartContains.variantIds.length > 0;
     return {
       ok: true,
@@ -63,7 +63,7 @@ function itemInput(
             applyByQuantity: true,
             filter: {
               type: usesVariants ? CampaignFilterTypeEnum.VARIANT : CampaignFilterTypeEnum.PRODUCT,
-              idList: usesVariants ? cartContains.variantIds : cartContains.productIds,
+              idList: usesVariants ? cartContains.variantIds : cartContains.products.map((product) => product.id),
             },
           },
           getY: {

@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useT } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n/dictionaries';
-import type { PageType, Rule } from '@/lib/campaigns/rules/types';
+import type { EntityRef, PageType, Rule } from '@/lib/campaigns/rules/types';
 import { cn } from '@/lib/utils';
+import { EntityPicker } from './entity-picker';
+import { useCategoryRefSearch, useProductRefSearch } from './entity-search';
 
 export const RULE_LABEL_KEYS: Record<Rule['kind'], TranslationKey> = {
   cart_total: 'rules.cart_total',
@@ -38,16 +40,31 @@ const PAGE_TYPES: Array<{ value: PageType; label: TranslationKey }> = [
 type Props = {
   rule: Rule;
   index: number;
+  token: string;
   onChange: (rule: Rule) => void;
   onRemove: () => void;
 };
 
-export function RuleRow({ rule, index, onChange, onRemove }: Props) {
+function ScopeField({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2 rounded-md bg-muted/40 p-3">
+      <div className="flex flex-col gap-0.5">
+        <span className="text-xs font-medium">{label}</span>
+        <span className="text-xs text-muted-foreground">{hint}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+export function RuleRow({ rule, index, token, onChange, onRemove }: Props) {
   const t = useT();
+  const searchProducts = useProductRefSearch(token);
+  const searchCategories = useCategoryRefSearch(token);
 
   return (
     <div className="flex items-start gap-3 rounded-md border p-4">
-      <div className="flex flex-1 flex-col gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium">{t(RULE_LABEL_KEYS[rule.kind])}</span>
           <span className="text-xs text-muted-foreground">{t(RULE_HINT_KEYS[rule.kind])}</span>
@@ -75,44 +92,63 @@ export function RuleRow({ rule, index, onChange, onRemove }: Props) {
         ) : null}
 
         {rule.kind === 'cart_contains_product' ? (
-          <Input
-            placeholder={t('rules.productIdsPlaceholder')}
-            value={rule.productIds.join(', ')}
-            onChange={(event) =>
-              onChange({
-                ...rule,
-                productIds: event.target.value
-                  .split(',')
-                  .map((value) => value.trim())
-                  .filter(Boolean),
-              })
-            }
+          <EntityPicker
+            value={rule.products}
+            onChange={(products: EntityRef[]) => onChange({ ...rule, products })}
+            onSearch={searchProducts}
+            placeholder={t('rules.searchProduct')}
           />
         ) : null}
 
         {rule.kind === 'page_type' ? (
-          <div className="flex flex-wrap gap-2">
-            {PAGE_TYPES.map((pageType) => {
-              const selected = rule.include.includes(pageType.value);
-              return (
-                <button
-                  key={pageType.value}
-                  type="button"
-                  onClick={() =>
-                    onChange({
-                      ...rule,
-                      include: selected ? rule.include.filter((value) => value !== pageType.value) : [...rule.include, pageType.value],
-                    })
-                  }
-                  className={cn(
-                    'rounded-full border px-3 py-1.5 text-xs transition-colors',
-                    selected ? 'border-foreground bg-foreground text-background' : 'hover:bg-accent',
-                  )}
-                >
-                  {t(pageType.label)}
-                </button>
-              );
-            })}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-2">
+              {PAGE_TYPES.map((pageType) => {
+                const selected = rule.include.includes(pageType.value);
+                return (
+                  <button
+                    key={pageType.value}
+                    type="button"
+                    onClick={() =>
+                      onChange({
+                        ...rule,
+                        include: selected ? rule.include.filter((value) => value !== pageType.value) : [...rule.include, pageType.value],
+                      })
+                    }
+                    className={cn(
+                      'rounded-full border px-3 py-1.5 text-xs transition-colors',
+                      selected ? 'border-foreground bg-foreground text-background' : 'hover:bg-accent',
+                    )}
+                  >
+                    {t(pageType.label)}
+                  </button>
+                );
+              })}
+            </div>
+
+            {rule.include.includes('product') ? (
+              <ScopeField label={t('rules.productScope')} hint={t('rules.productScopeHint')}>
+                <EntityPicker
+                  value={rule.products}
+                  onChange={(products: EntityRef[]) => onChange({ ...rule, products })}
+                  onSearch={searchProducts}
+                  placeholder={t('rules.searchProduct')}
+                  requireSlug
+                />
+              </ScopeField>
+            ) : null}
+
+            {rule.include.includes('collection') ? (
+              <ScopeField label={t('rules.categoryScope')} hint={t('rules.categoryScopeHint')}>
+                <EntityPicker
+                  value={rule.categories}
+                  onChange={(categories: EntityRef[]) => onChange({ ...rule, categories })}
+                  onSearch={searchCategories}
+                  placeholder={t('rules.searchCategory')}
+                  requireSlug
+                />
+              </ScopeField>
+            ) : null}
           </div>
         ) : null}
 

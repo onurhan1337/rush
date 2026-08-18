@@ -304,6 +304,23 @@ export interface ListVariantTypeQuery {
   listVariantType: ListVariantTypeQueryData;
 }
 
+export type SearchCategoryQueryVariables = {
+  search?: string;
+}
+
+export type SearchCategoryQueryData = Array<{
+  id: string;
+  name: string;
+  deleted: boolean;
+  metaData?: {
+  slug: string;
+};
+}>
+
+export interface SearchCategoryQuery {
+  listCategory: SearchCategoryQueryData;
+}
+
 export type SearchProductQueryVariables = {
   search?: string;
   pagination?: PaginationInput;
@@ -586,6 +603,22 @@ export class GeneratedQueries {
   }
 `;
     return this.client.query<Partial<ListVariantTypeQuery>>({ query });
+  }
+
+  async searchCategory(variables: SearchCategoryQueryVariables): Promise<APIResult<Partial<SearchCategoryQuery>>> {
+    const query = `
+  query searchCategory($search: String) {
+    listCategory(search: $search) {
+      id
+      name
+      deleted
+      metaData {
+        slug
+      }
+    }
+  }
+`;
+    return this.client.query<Partial<SearchCategoryQuery>>({ query, variables });
   }
 
   async searchProduct(variables: SearchProductQueryVariables): Promise<APIResult<Partial<SearchProductQuery>>> {

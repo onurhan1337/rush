@@ -15,7 +15,7 @@ import z from 'zod';
 const callbackSchema = z.object({
   code: z.string().min(1, 'Authorization code is required'),
   storeName: z.string().min(1).optional(),
-  state: z.string().min(1, 'State is required'),
+  state: z.string().min(1).optional(),
   signature: z.string().optional(),
 });
 
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     const validation = validateRequest(callbackSchema, {
       code: searchParams.get('code'),
       storeName: searchParams.get('storeName') || undefined,
-      state: searchParams.get('state'),
+      state: searchParams.get('state') || undefined,
       signature: searchParams.get('signature') || undefined,
     });
 
@@ -70,18 +70,25 @@ export async function GET(request: NextRequest) {
     const { code, storeName: storeNameParam, state, signature } = validation.data;
 
     // Validate code signature
-    if (signature &&!TokenHelpers.validateCodeSignature(code, signature, config.oauth.clientSecret!)) {
+    if (signature && !TokenHelpers.validateCodeSignature(code, signature, config.oauth.clientSecret!)) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
-    // State is mandatory and single-use: callbacks without the initiating
-    // session, with a mismatched value, or replayed after this point fail closed.
+    // State is checked against the session that started the flow, and consumed so a
+    // replayed callback cannot reuse it. ikas also installs apps from the Admin panel
+    // without ever calling authorize, and the session cookie written during authorize
+    // is a third-party cookie that the Admin iframe frequently drops — in both cases no
+    // state exists to compare, so demanding one would reject legitimate installs. Those
+    // callbacks are authenticated by the code exchange, plus the signature when ikas
+    // sends one.
     const session = await getSession();
-    if (!session.state || !statesMatch(session.state, state)) {
-      return NextResponse.json({ error: 'Invalid state parameter' }, { status: 400 });
+    if (session.state) {
+      if (!state || !statesMatch(session.state, state)) {
+        return NextResponse.json({ error: 'Invalid state parameter' }, { status: 400 });
+      }
+      session.state = undefined;
+      await setSession(session);
     }
-    session.state = undefined;
-    await setSession(session);
 
     // ikas echoes storeName back on the callback. Prefer it over the session: the
     // OAuth flow can run inside the Admin iframe, where the cookie written during

@@ -1,6 +1,16 @@
 import { z } from 'zod';
 import type { RuleSet } from './types';
 
+const MAX_REFS = 50;
+
+export const entityRefSchema = z.object({
+  id: z.string().min(1).max(64),
+  name: z.string().max(200).default(''),
+  slug: z.string().max(200).default(''),
+});
+
+const entityRefListSchema = z.array(entityRefSchema).max(MAX_REFS).default([]);
+
 export const cartTotalRuleSchema = z.object({
   kind: z.literal('cart_total'),
   op: z.enum(['gte', 'lte']),
@@ -9,13 +19,15 @@ export const cartTotalRuleSchema = z.object({
 
 export const cartContainsProductRuleSchema = z.object({
   kind: z.literal('cart_contains_product'),
-  productIds: z.array(z.string()).default([]),
-  variantIds: z.array(z.string()).default([]),
+  products: entityRefListSchema,
+  variantIds: z.array(z.string().min(1).max(64)).max(MAX_REFS).default([]),
 });
 
 export const pageTypeRuleSchema = z.object({
   kind: z.literal('page_type'),
   include: z.array(z.enum(['home', 'product', 'collection', 'cart', 'other'])).default([]),
+  products: entityRefListSchema,
+  categories: entityRefListSchema,
 });
 
 export const visitorRuleSchema = z.object({
@@ -32,17 +44,35 @@ export const scheduleRuleSchema = z.object({
   hours: z.object({ from: z.number().min(0).max(23), to: z.number().min(0).max(23) }).optional(),
 });
 
-export const ruleSchema = z.discriminatedUnion('kind', [
-  cartTotalRuleSchema,
-  cartContainsProductRuleSchema,
-  pageTypeRuleSchema,
-  visitorRuleSchema,
-  scheduleRuleSchema,
-]);
+function migrateLegacyRule(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value;
+
+  const rule = value as Record<string, unknown>;
+  if (rule.kind !== 'cart_contains_product' || rule.products !== undefined) return value;
+
+  const legacyIds = Array.isArray(rule.productIds) ? rule.productIds : [];
+  const products = legacyIds
+    .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    .slice(0, MAX_REFS)
+    .map((id) => ({ id, name: '', slug: '' }));
+
+  return { ...rule, products };
+}
+
+export const ruleSchema = z.preprocess(
+  migrateLegacyRule,
+  z.discriminatedUnion('kind', [
+    cartTotalRuleSchema,
+    cartContainsProductRuleSchema,
+    pageTypeRuleSchema,
+    visitorRuleSchema,
+    scheduleRuleSchema,
+  ]),
+);
 
 export const ruleSetSchema = z.object({
   match: z.enum(['all', 'any']).default('all'),
-  conditions: z.array(ruleSchema).default([]),
+  conditions: z.array(ruleSchema).max(20).default([]),
 });
 
 export type ParsedRuleSet = z.infer<typeof ruleSetSchema>;

@@ -211,24 +211,64 @@ button {
 .rush-nav[data-direction="next"] svg { transform: rotate(180deg); }
 .rush-nav[disabled] { opacity: .28; cursor: default; }
 
-.rush-variant-groups { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-.rush-variant-group { display: flex; flex-direction: column; gap: 6px; }
+.rush-variant-groups { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; min-width: 0; }
+.rush-variant-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .rush-variant-group-label { font-size: 11px; font-weight: 500; color: #8A8A8A; }
+.rush-variant-scroller { position: relative; display: flex; align-items: center; min-width: 0; }
 .rush-variants {
   display: flex;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
+  scroll-behavior: smooth;
   padding-bottom: 2px;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
 }
 .rush-variants::-webkit-scrollbar { display: none; }
+/* Container padding is deliberately avoided here: Chrome leaves the trailing padding
+   of a flex scroller outside the reachable scroll range, stranding the last variant. */
+.rush-variants {
+  --rush-fade-start: 0px;
+  --rush-fade-end: 0px;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--rush-fade-start), #000 calc(100% - var(--rush-fade-end)), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 var(--rush-fade-start), #000 calc(100% - var(--rush-fade-end)), transparent 100%);
+}
+.rush-variant-scroller[data-at-start="false"] .rush-variants { --rush-fade-start: 30px; }
+.rush-variant-scroller[data-at-end="false"] .rush-variants { --rush-fade-end: 30px; }
+.rush-variant-scroll {
+  position: absolute;
+  top: calc(50% - 1px);
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  z-index: 1;
+  border: 1px solid #E5E5E5;
+  border-radius: 50%;
+  background: #fff;
+  color: #0A0A0A;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 5px rgba(0,0,0,.14);
+  transition: opacity 160ms ease, background-color 160ms ease;
+}
+.rush-variant-scroll svg { width: 13px; height: 13px; }
+.rush-variant-scroll[data-direction="previous"] { left: 0; }
+.rush-variant-scroll[data-direction="next"] { right: 0; }
+.rush-variant-scroll[data-direction="next"] svg { transform: rotate(180deg); }
+.rush-variant-scroller[data-overflow="true"] .rush-variant-scroll { display: flex; }
+.rush-variant-scroll[disabled] { opacity: 0; pointer-events: none; }
 .rush-variant {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: none;
+  max-width: 100%;
   min-height: 32px;
   border: 1px solid #E5E5E5;
   background: #fff;
@@ -254,6 +294,7 @@ button {
 }
 .rush-variant[aria-pressed="true"] .rush-variant-dot { transform: scale(1.15); }
 .rush-variant-dot[data-blank="true"] { background: repeating-linear-gradient(45deg, #E5E5E5 0 3px, #F5F5F5 3px 6px); }
+.rush-variant-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .rush-variant-group[data-selection="color"] .rush-variant { padding: 5px 12px 5px 6px; }
 
 .rush-cta {
@@ -304,6 +345,7 @@ button {
   .rush-nav[data-direction="previous"]:hover:not([disabled]) { transform: translateX(-2px); }
   .rush-nav[data-direction="next"]:hover:not([disabled]) { transform: translateX(2px); }
   .rush-variant:hover:not([disabled]) { border-color: #A3A3A3; }
+  .rush-variant-scroll:hover:not([disabled]) { background: #F5F5F5; }
   .rush-close:hover { color: #0A0A0A; transform: rotate(90deg); }
 }
 
@@ -325,7 +367,8 @@ button {
 .rush-ended { margin-top: 16px; font-size: 13px; color: #8A8A8A; text-align: center; }
 
 @media (prefers-reduced-motion: reduce) {
-  .rush-panel, .rush-cta, .rush-variant, .rush-nav, .rush-close, .rush-tab, .rush-variant-dot, .rush-roll-strip { transition: none; }
+  .rush-panel, .rush-cta, .rush-variant, .rush-nav, .rush-close, .rush-tab, .rush-variant-dot, .rush-roll-strip, .rush-variant-scroll { transition: none; }
+  .rush-variants { scroll-behavior: auto; }
   .rush-cta::after { animation: none; }
   .rush-close:hover, .rush-nav:hover:not([disabled]), .rush-variant:active:not([disabled]) { transform: none; }
   .rush-dots span { animation: none; opacity: 1; }
@@ -338,6 +381,7 @@ button {
   .rush-product[data-paged="true"] { padding-right: 74px; }
   .rush-nav { width: 34px; height: 34px; }
   .rush-variant { min-height: 40px; padding: 8px 14px; font-size: 13px; }
+  .rush-variant-scroll { width: 28px; height: 28px; }
   .rush-cta { min-height: 52px; }
 }
 `;

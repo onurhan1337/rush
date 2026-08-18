@@ -130,13 +130,46 @@ export async function addToCart(variantId: string, quantity: number): Promise<{ 
   }
 }
 
+const LD_JSON = 'script[type="application/ld+json"]';
+const COLLECTION_LD = /"@type"\s*:\s*"CollectionPage"/;
+const PRODUCT_LD = /"@type"\s*:\s*"Product"/;
+
+// ikas serves products and categories from bare slugs — /basic-cap, /shoes — so the
+// path says nothing about the page. The storefront does emit schema.org data, where a
+// category page carries CollectionPage and a product page only Product. A category page
+// also lists its products, so CollectionPage has to win wherever it appears.
+function structuredPageType(): PageType | undefined {
+  try {
+    const scripts = document.querySelectorAll(LD_JSON);
+    let hasProduct = false;
+
+    for (let i = 0; i < scripts.length; i++) {
+      const text = scripts[i].textContent || '';
+      if (COLLECTION_LD.test(text)) return 'collection';
+      if (PRODUCT_LD.test(text)) hasProduct = true;
+    }
+
+    return hasProduct ? 'product' : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function getPageType(): PageType {
   const path = location.pathname.toLowerCase();
   if (path === '/' || path === '') return 'home';
   if (/\/(cart|sepet|sepetim)\b/.test(path)) return 'cart';
+
+  const structured = structuredPageType();
+  if (structured) return structured;
+
   if (/\/(product|urun|ürün|p)\//.test(path)) return 'product';
   if (/\/(collection|category|kategori|koleksiyon)\b/.test(path)) return 'collection';
   return 'other';
+}
+
+export function getPath(): string {
+  return location.pathname.toLowerCase();
 }
 
 export function isLoggedIn(): boolean {

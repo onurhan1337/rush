@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { useT } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n/dictionaries';
 import { APPLICABLE_PRICES, type ApplicablePrice } from '@/lib/campaigns/ikas-settings';
-import { AFTER_ADD_TO_CART, type AfterAddToCart } from '@/lib/campaigns/types/offer-product/schema';
+import { AFTER_ADD_TO_CART, AFTER_CONVERSION, type AfterAddToCart, type AfterConversion } from '@/lib/campaigns/types/offer-product/schema';
 import type { CampaignFormValues } from '../types';
 import { Field, Section } from './section';
 
@@ -15,6 +15,18 @@ const AFTER_ADD_LABELS: Record<AfterAddToCart, TranslationKey> = {
   drawer: 'integration.afterDrawer',
   cart: 'integration.afterCart',
   stay: 'integration.afterStay',
+};
+
+const AFTER_CONVERSION_LABELS: Record<AfterConversion, TranslationKey> = {
+  keep: 'integration.conversionKeep',
+  hideSession: 'integration.conversionSession',
+  hideDay: 'integration.conversionDay',
+};
+
+const AFTER_CONVERSION_HINTS: Record<AfterConversion, TranslationKey> = {
+  keep: 'integration.conversionKeepHint',
+  hideSession: 'integration.conversionSessionHint',
+  hideDay: 'integration.conversionDayHint',
 };
 
 const APPLICABLE_PRICE_LABELS: Record<ApplicablePrice, TranslationKey> = {
@@ -60,6 +72,24 @@ export function IntegrationSection({ form }: { form: UseFormReturn<CampaignFormV
           <Input placeholder=".header-cart-button" className="font-mono text-xs" {...form.register('config.cartTriggerSelector')} />
         </Field>
       ) : null}
+
+      <Field label={t('integration.afterConversion')} hint={t(AFTER_CONVERSION_HINTS[form.watch('config.afterConversion')])}>
+        <Select
+          value={form.watch('config.afterConversion')}
+          onValueChange={(value) => form.setValue('config.afterConversion', value as AfterConversion, { shouldDirty: true })}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {AFTER_CONVERSION.map((value) => (
+              <SelectItem key={value} value={value}>
+                {t(AFTER_CONVERSION_LABELS[value])}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
 
       <div className="divide-y rounded-md border">
         {TOGGLES.map((toggle) => (

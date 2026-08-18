@@ -1,4 +1,4 @@
-import type { Rule, RuleContext, RuleSet } from './types';
+import type { EntityRef, PageType, Rule, RuleContext, RuleSet } from './types';
 
 function evaluateCartTotal(rule: Extract<Rule, { kind: 'cart_total' }>, context: RuleContext): boolean {
   if (!context.cart) return false;
@@ -7,13 +7,58 @@ function evaluateCartTotal(rule: Extract<Rule, { kind: 'cart_total' }>, context:
 
 function evaluateCartContainsProduct(rule: Extract<Rule, { kind: 'cart_contains_product' }>, context: RuleContext): boolean {
   if (!context.cart) return false;
-  if (!rule.productIds.length && !rule.variantIds.length) return true;
+  if (!rule.products.length && !rule.variantIds.length) return true;
+
   for (let i = 0; i < context.cart.lines.length; i++) {
     const line = context.cart.lines[i];
-    if (line.productId && rule.productIds.indexOf(line.productId) !== -1) return true;
+    if (line.productId && rule.products.some((product) => product.id === line.productId)) return true;
     if (line.variantId && rule.variantIds.indexOf(line.variantId) !== -1) return true;
   }
   return false;
+}
+
+function normalizeSlug(slug: string): string {
+  return slug.trim().replace(/^\/+|\/+$/g, '').toLowerCase();
+}
+
+function pathMatchesSlug(path: string, slug: string): boolean {
+  const normalized = normalizeSlug(slug);
+  if (!normalized) return false;
+
+  const segments = path.toLowerCase().split('/').filter(Boolean);
+  if (normalized.indexOf('/') === -1) return segments.indexOf(normalized) !== -1;
+  return `/${segments.join('/')}`.endsWith(`/${normalized}`);
+}
+
+function matchesAnyRef(refs: EntityRef[], path: string): boolean {
+  for (let i = 0; i < refs.length; i++) {
+    if (pathMatchesSlug(path, refs[i].slug)) return true;
+  }
+  return false;
+}
+
+// Landing on the exact URL of a picked product or category is itself proof of the page
+// type, so a theme the storefront detection cannot read does not silently disable the
+// rule.
+function scopedPageType(rule: Extract<Rule, { kind: 'page_type' }>, context: RuleContext): PageType {
+  if (context.path) {
+    if (rule.products.length && matchesAnyRef(rule.products, context.path)) return 'product';
+    if (rule.categories.length && matchesAnyRef(rule.categories, context.path)) return 'collection';
+  }
+  return context.pageType;
+}
+
+function evaluatePageType(rule: Extract<Rule, { kind: 'page_type' }>, context: RuleContext): boolean {
+  const pageType = scopedPageType(rule, context);
+  if (rule.include.length && rule.include.indexOf(pageType) === -1) return false;
+
+  // Without a storefront path — preview, for instance — the narrower product and
+  // category scopes cannot be resolved, so the page type decides on its own.
+  if (!context.path) return true;
+
+  if (pageType === 'product' && rule.products.length) return matchesAnyRef(rule.products, context.path);
+  if (pageType === 'collection' && rule.categories.length) return matchesAnyRef(rule.categories, context.path);
+  return true;
 }
 
 function evaluateSchedule(rule: Extract<Rule, { kind: 'schedule' }>, context: RuleContext): boolean {
@@ -41,7 +86,7 @@ export function evaluateRule(rule: Rule, context: RuleContext): boolean {
     case 'cart_contains_product':
       return evaluateCartContainsProduct(rule, context);
     case 'page_type':
-      return !rule.include.length || rule.include.indexOf(context.pageType) !== -1;
+      return evaluatePageType(rule, context);
     case 'visitor':
       if (typeof rule.isLoggedIn === 'boolean' && rule.isLoggedIn !== context.isLoggedIn) return false;
       if (typeof rule.isFirstVisit === 'boolean' && rule.isFirstVisit !== context.isFirstVisit) return false;

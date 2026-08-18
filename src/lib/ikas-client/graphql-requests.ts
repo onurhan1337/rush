@@ -54,6 +54,19 @@ export const LIST_VARIANT_TYPE = gql`
   }
 `;
 
+export const SEARCH_CATEGORY = gql`
+  query searchCategory($search: String) {
+    listCategory(search: $search) {
+      id
+      name
+      deleted
+      metaData {
+        slug
+      }
+    }
+  }
+`;
+
 export const SEARCH_PRODUCT = gql`
   query searchProduct($search: String, $pagination: PaginationInput) {
     listProduct(search: $search, pagination: $pagination) {

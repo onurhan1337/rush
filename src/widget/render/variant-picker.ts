@@ -5,6 +5,7 @@ import { el } from './dom';
 export type VariantPicker = {
   node: HTMLElement;
   selected: () => WidgetVariant;
+  destroy: () => void;
 };
 
 type Options = {
@@ -15,6 +16,11 @@ type Options = {
 };
 
 type Choice = Record<string, string>;
+
+const CHEVRON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
+
+const EDGE_TOLERANCE = 2;
 
 function choiceOf(variant: WidgetVariant): Choice {
   const choice: Choice = {};
@@ -61,6 +67,77 @@ function createValueButton(type: ResolvedVariantType, value: ResolvedVariantValu
   return button;
 }
 
+function createScrollButton(direction: 'previous' | 'next', label: string, onClick: () => void): HTMLButtonElement {
+  const button = el('button', 'rush-variant-scroll');
+  button.type = 'button';
+  button.tabIndex = -1;
+  button.setAttribute('aria-hidden', 'true');
+  button.setAttribute('aria-label', label);
+  button.setAttribute('data-direction', direction);
+  button.innerHTML = CHEVRON;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
+type Scroller = {
+  node: HTMLElement;
+  list: HTMLElement;
+  sync: () => void;
+  destroy: () => void;
+};
+
+// A mouse without a horizontal wheel cannot pan an overflowing row, so the arrows
+// are the only reliable way to reach the variants past the edge.
+function createScroller(typeName: string): Scroller {
+  const node = el('div', 'rush-variant-scroller');
+  node.setAttribute('data-overflow', 'false');
+  node.setAttribute('data-at-start', 'true');
+  node.setAttribute('data-at-end', 'true');
+
+  const list = el('div', 'rush-variants');
+
+  const step = () => Math.max(Math.round(list.clientWidth * 0.8), 96);
+  const previous = createScrollButton('previous', `${typeName}: önceki`, () => list.scrollBy({ left: -step() }));
+  const next = createScrollButton('next', `${typeName}: sonraki`, () => list.scrollBy({ left: step() }));
+
+  node.appendChild(previous);
+  node.appendChild(list);
+  node.appendChild(next);
+
+  const sync = () => {
+    const max = list.scrollWidth - list.clientWidth;
+    const overflowing = max > EDGE_TOLERANCE;
+    const atStart = !overflowing || list.scrollLeft <= EDGE_TOLERANCE;
+    const atEnd = !overflowing || list.scrollLeft >= max - EDGE_TOLERANCE;
+
+    node.setAttribute('data-overflow', overflowing ? 'true' : 'false');
+    node.setAttribute('data-at-start', atStart ? 'true' : 'false');
+    node.setAttribute('data-at-end', atEnd ? 'true' : 'false');
+    previous.disabled = atStart;
+    next.disabled = atEnd;
+  };
+
+  list.addEventListener('scroll', sync, { passive: true });
+  window.addEventListener('resize', sync);
+
+  const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => sync()) : null;
+  if (observer) observer.observe(list);
+
+  const frame = requestAnimationFrame(sync);
+
+  return {
+    node,
+    list,
+    sync,
+    destroy: () => {
+      cancelAnimationFrame(frame);
+      list.removeEventListener('scroll', sync);
+      window.removeEventListener('resize', sync);
+      if (observer) observer.disconnect();
+    },
+  };
+}
+
 export function createVariantPicker({ variants, types, initial, onChange }: Options): VariantPicker | null {
   if (variants.length < 2 || !types.length) return null;
 
@@ -69,6 +146,7 @@ export function createVariantPicker({ variants, types, initial, onChange }: Opti
   let current = initial;
 
   const entries: Array<{ button: HTMLButtonElement; typeId: string; valueId: string }> = [];
+  const scrollers: Scroller[] = [];
 
   const sync = () => {
     for (const entry of entries) {
@@ -84,7 +162,9 @@ export function createVariantPicker({ variants, types, initial, onChange }: Opti
 
     group.appendChild(el('span', 'rush-variant-group-label', type.name));
 
-    const list = el('div', 'rush-variants');
+    const scroller = createScroller(type.name);
+    scrollers.push(scroller);
+
     for (const value of type.values) {
       const button = createValueButton(type, value);
       button.disabled = !variants.some((variant) => matches(variant, { [type.id]: value.id }) && variant.inStock);
@@ -97,14 +177,20 @@ export function createVariantPicker({ variants, types, initial, onChange }: Opti
         onChange(next.variant);
       });
       entries.push({ button, typeId: type.id, valueId: value.id });
-      list.appendChild(button);
+      scroller.list.appendChild(button);
     }
 
-    group.appendChild(list);
+    group.appendChild(scroller.node);
     node.appendChild(group);
   }
 
   sync();
 
-  return { node, selected: () => current };
+  return {
+    node,
+    selected: () => current,
+    destroy: () => {
+      for (const scroller of scrollers) scroller.destroy();
+    },
+  };
 }

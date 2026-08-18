@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { DEFAULT_APPEARANCE, type Appearance } from '@/lib/campaigns/appearance';
-import { EMPTY_RULE_SET, type RuleSet } from '@/lib/campaigns/rules/types';
+import { ruleSchema } from '@/lib/campaigns/rules/schema';
+import { EMPTY_RULE_SET, type Rule, type RuleSet } from '@/lib/campaigns/rules/types';
 import type { Campaign, CampaignInput, CampaignStatus } from './index';
 
 function parseJson<T>(raw: string | null | undefined, fallback: T): T {
@@ -11,6 +12,23 @@ function parseJson<T>(raw: string | null | undefined, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+// Rules are normalised on read so rows written by an older schema reach the editor
+// and the widget in the shape both of them expect. Conditions are parsed one by one:
+// a single unreadable condition must not drop the whole set, which would silently
+// widen the campaign to every visitor.
+function readRules(raw: string | null | undefined): RuleSet {
+  const stored = parseJson<Partial<RuleSet>>(raw, EMPTY_RULE_SET);
+  const conditions = Array.isArray(stored.conditions) ? stored.conditions : [];
+
+  return {
+    match: stored.match === 'any' ? 'any' : 'all',
+    conditions: conditions.flatMap((condition) => {
+      const parsed = ruleSchema.safeParse(condition);
+      return parsed.success ? [parsed.data as Rule] : [];
+    }),
+  };
 }
 
 function readIkasCampaignIds(db: any): string[] {
@@ -31,7 +49,7 @@ export class CampaignManager {
       startsAt: db.startsAt ? new Date(db.startsAt).toISOString() : undefined,
       endsAt: db.endsAt ? new Date(db.endsAt).toISOString() : undefined,
       config: parseJson<Record<string, unknown>>(db.config, {}),
-      rules: parseJson<RuleSet>(db.rules, EMPTY_RULE_SET),
+      rules: readRules(db.rules),
       appearance: { ...DEFAULT_APPEARANCE, ...parseJson<Partial<Appearance>>(db.appearance, {}) },
       ikasCampaignIds: readIkasCampaignIds(db),
       priority: db.priority ?? 0,

@@ -1,3 +1,4 @@
+import type { AfterConversion } from '@/lib/campaigns/types/offer-product/schema';
 import type { WidgetCampaign, WidgetProduct, WidgetVariant } from '@/lib/campaigns/widget-types';
 import { addToCart } from '../context/ikas';
 import { goToCart, openCartDrawer } from '../context/cart-drawer';
@@ -13,6 +14,8 @@ import { createVariantPicker } from './variant-picker';
 import { createCta } from './cta';
 
 const DISMISS_PREFIX = 'rush.dismissed.';
+const CONVERTED_PREFIX = 'rush.converted.';
+const CONVERSION_HIDE_DELAY_MS = 2600;
 
 export type RenderedCampaign = { destroy: () => void };
 
@@ -31,6 +34,33 @@ function isDismissed(campaignId: string): boolean {
 function markDismissed(campaignId: string): void {
   try {
     localStorage.setItem(DISMISS_PREFIX + campaignId, today());
+  } catch {
+    return;
+  }
+}
+
+function conversionStore(mode: AfterConversion): Storage | null {
+  if (mode === 'hideSession') return sessionStorage;
+  if (mode === 'hideDay') return localStorage;
+  return null;
+}
+
+function isConverted(campaignId: string, mode: AfterConversion): boolean {
+  try {
+    const store = conversionStore(mode);
+    if (!store) return false;
+    const stamp = store.getItem(CONVERTED_PREFIX + campaignId);
+    if (!stamp) return false;
+    return mode === 'hideDay' ? stamp === today() : true;
+  } catch {
+    return false;
+  }
+}
+
+function markConverted(campaignId: string, mode: AfterConversion): void {
+  try {
+    const store = conversionStore(mode);
+    if (store) store.setItem(CONVERTED_PREFIX + campaignId, today());
   } catch {
     return;
   }
@@ -63,6 +93,7 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
   const { data, appearance } = campaign;
   if (!data.products.length) return null;
   if (isDismissed(campaign.id)) return null;
+  if (isConverted(campaign.id, data.afterConversion)) return null;
 
   const endsAt = resolveEndsAt(campaign.id, data.countdown);
   if (endsAt !== undefined && endsAt <= Date.now()) return null;
@@ -75,8 +106,10 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
   let activeProduct = data.products[0];
   let selection: WidgetVariant = defaultVariant(activeProduct);
   let countdownHandle: { stop: () => void } | null = null;
+  let activePicker: { destroy: () => void } | null = null;
   let panelMounted = false;
   let converted = false;
+  let destroyed = false;
 
   const tab = createStickyTab(data.tabLabel, appearance, () => togglePanel());
   const panel = createPanel(shadow.root, data.headline, data.subtitle, () => {
@@ -106,6 +139,9 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
     activeIndex = index;
     activeProduct = data.products[index];
     selection = defaultVariant(activeProduct);
+
+    if (activePicker) activePicker.destroy();
+    activePicker = null;
     stage.innerHTML = '';
 
     const card = createProductCard(activeProduct, selection);
@@ -125,7 +161,10 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
         syncCtaState();
       },
     });
-    if (picker) stage.appendChild(picker.node);
+    if (picker) {
+      activePicker = picker;
+      stage.appendChild(picker.node);
+    }
     if (switcher) switcher.sync(activeIndex);
 
     syncCtaState();
@@ -156,7 +195,15 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
     track(campaign.id, 'ADD_TO_CART', selection.id, selection.offerPrice * activeProduct.quantity);
     converted = true;
     cta.setState('success');
+    retireAfterConversion();
     revealCart();
+  }
+
+  function retireAfterConversion() {
+    if (data.afterConversion === 'keep') return;
+
+    markConverted(campaign.id, data.afterConversion);
+    setTimeout(() => destroy(), CONVERSION_HIDE_DELAY_MS);
   }
 
   function revealCart() {
@@ -227,8 +274,12 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
   }
 
   function destroy() {
+    if (destroyed) return;
+    destroyed = true;
+
     observer.disconnect();
     if (countdownHandle) countdownHandle.stop();
+    if (activePicker) activePicker.destroy();
     panel.destroy();
     shadow.destroy();
   }

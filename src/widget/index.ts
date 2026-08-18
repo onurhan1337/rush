@@ -1,7 +1,7 @@
 import { evaluateRules, requiresCart } from '@/lib/campaigns/rules/evaluate';
 import type { CartSnapshot, PageType, RuleContext } from '@/lib/campaigns/rules/types';
 import type { WidgetCampaign, WidgetConfigPayload } from '@/lib/campaigns/widget-types';
-import { getCart, getPageType, hydrateCart, isCartResolved, isLoggedIn, onCartChange, setCart, subscribeCart } from './context/ikas';
+import { getCart, getPageType, getPath, hydrateCart, isCartResolved, isLoggedIn, onCartChange, setCart, subscribeCart } from './context/ikas';
 import { fetchConfig, listenForPreviewConfig } from './transport/config';
 import { initEvents } from './transport/events';
 import { getRenderer } from './render/registry';
@@ -12,6 +12,7 @@ const FIRST_VISIT_KEY = 'rush.seen';
 type PreviewContext = {
   cart?: CartSnapshot;
   pageType?: PageType;
+  path?: string;
   isLoggedIn?: boolean;
   isFirstVisit?: boolean;
 };
@@ -37,6 +38,7 @@ function buildContext(): RuleContext {
   return {
     cart: previewMode ? previewContext.cart : getCart(),
     pageType: previewContext.pageType ?? getPageType(),
+    path: previewMode ? (previewContext.path ?? '') : getPath(),
     isLoggedIn: previewContext.isLoggedIn ?? isLoggedIn(),
     isFirstVisit: previewContext.isFirstVisit ?? firstVisit,
     now: Date.now(),

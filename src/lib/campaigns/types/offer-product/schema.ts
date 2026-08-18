@@ -5,6 +5,10 @@ export const AFTER_ADD_TO_CART = ['drawer', 'cart', 'stay'] as const;
 
 export type AfterAddToCart = (typeof AFTER_ADD_TO_CART)[number];
 
+export const AFTER_CONVERSION = ['keep', 'hideSession', 'hideDay'] as const;
+
+export type AfterConversion = (typeof AFTER_CONVERSION)[number];
+
 export const countdownSchema = z
   .object({
     mode: z.enum(['fixed', 'perSession']).default('fixed'),
@@ -31,6 +35,7 @@ const offerProductShape = z.object({
   tabLabel: z.string().min(1).max(24).default('Fırsat ürün'),
   currencySymbol: z.string().max(6).default(''),
   afterAddToCart: z.enum(AFTER_ADD_TO_CART).default('drawer'),
+  afterConversion: z.enum(AFTER_CONVERSION).default('keep'),
   cartTriggerSelector: z.string().max(200).default(''),
   ikas: ikasSettingsSchema.default(DEFAULT_IKAS_SETTINGS),
 });
@@ -62,6 +67,7 @@ export const OFFER_PRODUCT_DEFAULT_CONFIG: OfferProductConfig = {
   tabLabel: 'Fırsat ürün',
   currencySymbol: '',
   afterAddToCart: 'drawer',
+  afterConversion: 'keep',
   cartTriggerSelector: '',
   ikas: DEFAULT_IKAS_SETTINGS,
 };

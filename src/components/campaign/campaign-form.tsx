@@ -108,7 +108,7 @@ export function CampaignForm({ campaign: initialCampaign, token }: { campaign: C
           <ContentSection form={form} />
           <AppearanceSection form={form} />
           <IntegrationSection form={form} />
-          <RulesSection form={form} campaignType={campaign.type} />
+          <RulesSection form={form} campaignType={campaign.type} token={token} />
         </form>
 
         <div className="flex flex-col gap-4 lg:sticky lg:top-8 lg:self-start">
