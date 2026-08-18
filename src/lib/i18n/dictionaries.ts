@@ -126,6 +126,9 @@ export const tr = {
   'integration.includeDiscountedHint': 'Zaten indirimli olan varyantlar kampanyaya dahil edilir.',
   'integration.freeShipping': 'Ücretsiz kargo',
   'integration.freeShippingHint': 'Kampanya uygulandığında kargo ücretsiz olur.',
+  'integration.freeShippingThreshold': 'Eşik, Kurallar bölümündeki "Sepet tutarı en az" kuralından geliyor:',
+  'integration.freeShippingNoThreshold':
+    'Eşik yok — kampanyanın uygulandığı her sepette kargo ücretsiz olur. "X TL üzeri" için Kurallar bölümüne "Sepet tutarı en az X" kuralı ekleyin.',
   'integration.applicablePrice': 'Uygulanacak fiyat',
   'integration.priceSell': 'Satış fiyatı',
   'integration.priceDiscount': 'İndirimli fiyat',
@@ -165,6 +168,8 @@ export const tr = {
   'appearance.autoOpen': 'Otomatik açıl',
   'appearance.autoOpenHint': 'Sayfa açıldıktan bir süre sonra panel kendiliğinden açılsın.',
   'appearance.autoOpenDelay': 'Gecikme (saniye)',
+  'appearance.useThemeFont': 'Mağaza fontunu kullan',
+  'appearance.useThemeFontHint': 'Kapalıyken widget kendi premium fontuyla (Switzer + Cabinet Grotesk) çıkar.',
 
   'rules.title': 'Kurallar',
   'rules.description': 'Widget yalnızca bu koşullar sağlandığında gösterilir.',
@@ -359,6 +364,9 @@ export const en: Record<TranslationKey, string> = {
   'integration.includeDiscountedHint': 'Variants that are already discounted stay eligible.',
   'integration.freeShipping': 'Free shipping',
   'integration.freeShippingHint': 'Shipping becomes free when the campaign applies.',
+  'integration.freeShippingThreshold': 'The threshold comes from the "Cart total at least" rule in Rules:',
+  'integration.freeShippingNoThreshold':
+    'No threshold — shipping is free on every cart the campaign applies to. For "over X", add a "Cart total at least X" rule in Rules.',
   'integration.applicablePrice': 'Applicable price',
   'integration.priceSell': 'Sell price',
   'integration.priceDiscount': 'Discount price',
@@ -398,6 +406,8 @@ export const en: Record<TranslationKey, string> = {
   'appearance.autoOpen': 'Open automatically',
   'appearance.autoOpenHint': 'Open the panel by itself a few seconds after the page loads.',
   'appearance.autoOpenDelay': 'Delay (seconds)',
+  'appearance.useThemeFont': 'Use the store font',
+  'appearance.useThemeFontHint': 'When off, the widget ships with its own premium type (Switzer + Cabinet Grotesk).',
 
   'rules.title': 'Rules',
   'rules.description': 'The widget is shown only when these conditions are met.',

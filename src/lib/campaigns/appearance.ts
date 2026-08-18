@@ -25,6 +25,7 @@ export type Appearance = {
   ctaStyle: CtaStyle;
   autoOpen: boolean;
   autoOpenDelaySec: number;
+  useThemeFont: boolean;
 };
 
 export const DEFAULT_APPEARANCE: Appearance = {
@@ -38,6 +39,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   ctaStyle: 'solid',
   autoOpen: false,
   autoOpenDelaySec: 3,
+  useThemeFont: false,
 };
 
 export type RadiusScale = {

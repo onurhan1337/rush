@@ -4,10 +4,11 @@ import type { UseFormReturn } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { useT } from '@/lib/i18n';
+import { useIntlLocale, useT } from '@/lib/i18n';
 import type { TranslationKey } from '@/lib/i18n/dictionaries';
 import { APPLICABLE_PRICES, type ApplicablePrice } from '@/lib/campaigns/ikas-settings';
 import { AFTER_ADD_TO_CART, AFTER_CONVERSION, type AfterAddToCart, type AfterConversion } from '@/lib/campaigns/types/offer-product/schema';
+import type { CartTotalRule } from '@/lib/campaigns/rules/types';
 import type { CampaignFormValues } from '../types';
 import { Field, Section } from './section';
 
@@ -42,6 +43,16 @@ const TOGGLES: Array<{ name: 'canCombineWithOtherCampaigns' | 'includeDiscounted
 
 export function IntegrationSection({ form }: { form: UseFormReturn<CampaignFormValues> }) {
   const t = useT();
+  const locale = useIntlLocale();
+  const rules = form.watch('rules');
+  const freeShipping = form.watch('config.ikas.isFreeShipping');
+  const threshold = rules?.conditions?.find((rule): rule is CartTotalRule => rule.kind === 'cart_total' && rule.op === 'gte');
+
+  const freeShippingNote = !freeShipping
+    ? null
+    : threshold
+      ? `${t('integration.freeShippingThreshold')} ${new Intl.NumberFormat(locale).format(threshold.amount)}`
+      : t('integration.freeShippingNoThreshold');
 
   return (
     <Section title={t('integration.title')} description={t('integration.description')}>
@@ -93,15 +104,21 @@ export function IntegrationSection({ form }: { form: UseFormReturn<CampaignFormV
 
       <div className="divide-y rounded-md border">
         {TOGGLES.map((toggle) => (
-          <div key={toggle.name} className="flex items-center justify-between gap-4 p-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-medium">{t(toggle.label)}</span>
-              <span className="text-xs text-muted-foreground">{t(toggle.hint)}</span>
+          <div key={toggle.name} className="flex flex-col gap-2 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-medium">{t(toggle.label)}</span>
+                <span className="text-xs text-muted-foreground">{t(toggle.hint)}</span>
+              </div>
+              <Switch
+                checked={form.watch(`config.ikas.${toggle.name}`)}
+                onCheckedChange={(checked) => form.setValue(`config.ikas.${toggle.name}`, checked, { shouldDirty: true })}
+              />
             </div>
-            <Switch
-              checked={form.watch(`config.ikas.${toggle.name}`)}
-              onCheckedChange={(checked) => form.setValue(`config.ikas.${toggle.name}`, checked, { shouldDirty: true })}
-            />
+
+            {toggle.name === 'isFreeShipping' && freeShippingNote ? (
+              <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">{freeShippingNote}</p>
+            ) : null}
           </div>
         ))}
       </div>

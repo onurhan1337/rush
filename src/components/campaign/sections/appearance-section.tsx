@@ -56,6 +56,7 @@ export function AppearanceSection({ form }: { form: UseFormReturn<CampaignFormVa
   const tabRadius = form.watch('appearance.tabRadius') ?? 16;
   const icon = form.watch('appearance.icon');
   const ctaStyle = form.watch('appearance.ctaStyle');
+  const useThemeFont = form.watch('appearance.useThemeFont');
 
   return (
     <Section title={t('appearance.title')} description={t('appearance.description')}>
@@ -160,6 +161,19 @@ export function AppearanceSection({ form }: { form: UseFormReturn<CampaignFormVa
           ))}
         </div>
       </Field>
+
+      <div className="rounded-md border">
+        <div className="flex items-center justify-between gap-4 p-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium">{t('appearance.useThemeFont')}</span>
+            <span className="text-xs text-muted-foreground">{t('appearance.useThemeFontHint')}</span>
+          </div>
+          <Switch
+            checked={useThemeFont}
+            onCheckedChange={(checked) => form.setValue('appearance.useThemeFont', checked, { shouldDirty: true })}
+          />
+        </div>
+      </div>
 
       <div className="rounded-md border">
         <div className="flex items-center justify-between gap-4 p-4">

@@ -6,6 +6,11 @@ export type ProductCard = {
   update: (variant: WidgetVariant) => void;
 };
 
+function savingPercent(sellPrice: number, offerPrice: number): number {
+  if (sellPrice <= 0) return 0;
+  return Math.max(1, Math.round(((sellPrice - offerPrice) / sellPrice) * 100));
+}
+
 function createMediaSlot(productName: string) {
   const node = el('div', 'rush-media');
   node.setAttribute('data-state', 'empty');
@@ -64,8 +69,10 @@ export function createProductCard(product: WidgetProduct, variant: WidgetVariant
   const prices = el('div', 'rush-prices');
   const oldPrice = el('span', 'rush-old');
   const newPrice = el('span', 'rush-new');
+  const save = el('span', 'rush-save');
   prices.appendChild(oldPrice);
   prices.appendChild(newPrice);
+  prices.appendChild(save);
   info.appendChild(name);
   info.appendChild(prices);
   node.appendChild(info);
@@ -76,6 +83,7 @@ export function createProductCard(product: WidgetProduct, variant: WidgetVariant
     prices.setAttribute('data-discounted', discounted ? 'true' : 'false');
     oldPrice.textContent = discounted ? formatMoney(next.sellPrice, product.currency) : '';
     newPrice.textContent = formatMoney(next.offerPrice, product.currency);
+    save.textContent = discounted ? `%${savingPercent(next.sellPrice, next.offerPrice)} indirim` : '';
   };
 
   update(variant);

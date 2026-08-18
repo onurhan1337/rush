@@ -1,4 +1,5 @@
 import type { Appearance, MountTarget } from '@/lib/campaigns/appearance';
+import { loadWidgetFonts } from '../context/fonts';
 import { STYLES, applyAppearanceVars } from './styles';
 
 export type ShadowHost = {
@@ -23,6 +24,8 @@ function resolveMountTarget(target: MountTarget, host: HTMLElement): boolean {
 }
 
 export function createShadowHost(campaignId: string, appearance: Appearance): ShadowHost | null {
+  if (!appearance.useThemeFont) loadWidgetFonts();
+
   const host = document.createElement('div');
   host.setAttribute('data-rush', campaignId);
   host.lang = 'tr';

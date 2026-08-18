@@ -11,6 +11,13 @@ const nextConfig = {
         ],
       },
       {
+        source: '/fonts/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+        ],
+      },
+      {
         source: '/api/public/:path*',
         headers: [
           { key: 'Access-Control-Allow-Origin', value: '*' },
@@ -20,9 +27,7 @@ const nextConfig = {
       },
     ];
   },
-  // Webpack configuration
   webpack: (config) => {
-    // Disable fs module on client side (required for Vercel)
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,

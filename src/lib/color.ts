@@ -56,3 +56,10 @@ export function hover(color: string): string {
   if (!parsed) return color;
   return luminance(parsed) > 0.45 ? shade(color, 0.12) : tint(color, 0.16);
 }
+
+export function alpha(color: string, value: number): string {
+  const parsed = parseHex(color);
+  if (!parsed) return color;
+  const clamped = Math.min(1, Math.max(0, value));
+  return `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, ${clamped})`;
+}

@@ -2,6 +2,7 @@ import { evaluateRules, requiresCart } from '@/lib/campaigns/rules/evaluate';
 import type { CartSnapshot, PageType, RuleContext } from '@/lib/campaigns/rules/types';
 import type { WidgetCampaign, WidgetConfigPayload } from '@/lib/campaigns/widget-types';
 import { getCart, getPageType, getPath, hydrateCart, isCartResolved, isLoggedIn, onCartChange, setCart, subscribeCart } from './context/ikas';
+import { setAssetOrigin } from './context/fonts';
 import { onRouteChange } from './context/navigation';
 import { fetchConfig, listenForPreviewConfig } from './transport/config';
 import { initEvents } from './transport/events';
@@ -117,7 +118,9 @@ function boot(): void {
   const script = document.currentScript as HTMLScriptElement | null;
   const publicKey = script?.getAttribute('data-rush-key') ?? '';
   const preview = script?.getAttribute('data-rush-preview') === '1';
+  const scriptOrigin = script?.src ? new URL(script.src).origin : location.origin;
 
+  setAssetOrigin(scriptOrigin);
   subscribeCart();
 
   if (preview) {
@@ -133,10 +136,8 @@ function boot(): void {
 
   if (!publicKey) return;
 
-  const origin = script?.src ? new URL(script.src).origin : location.origin;
-
   const loadConfig = () =>
-    fetchConfig(origin, publicKey)
+    fetchConfig(scriptOrigin, publicKey)
       .then((payload) => applyPayload(payload, publicKey))
       .catch(() => {
         return;

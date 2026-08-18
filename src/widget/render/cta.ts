@@ -1,4 +1,4 @@
-import { el, upperCase } from './dom';
+import { el } from './dom';
 
 export type CtaState = 'idle' | 'loading' | 'success' | 'error' | 'soldout' | 'redirect' | 'retry';
 
@@ -9,7 +9,7 @@ export type Cta = {
 };
 
 const LABELS: Partial<Record<CtaState, string>> = {
-  success: '✓ Sepete eklendi',
+  success: 'Sepete eklendi',
   soldout: 'Tükendi',
   redirect: 'Ürüne git',
   retry: 'Tekrar dene',
@@ -22,6 +22,8 @@ export function createCta(label: string, onClick: () => void): Cta {
   button.addEventListener('click', onClick);
 
   const error = el('div', 'rush-error');
+  error.setAttribute('role', 'status');
+  error.setAttribute('aria-live', 'polite');
   error.style.display = 'none';
 
   node.appendChild(button);
@@ -45,7 +47,7 @@ export function createCta(label: string, onClick: () => void): Cta {
     }
 
     button.removeAttribute('aria-label');
-    button.textContent = upperCase(LABELS[state] ?? label);
+    button.textContent = LABELS[state] ?? label;
 
     if ((state === 'error' || state === 'retry') && message) {
       error.textContent = message;

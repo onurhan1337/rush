@@ -2,7 +2,7 @@ import type { AfterConversion } from '@/lib/campaigns/types/offer-product/schema
 import type { AddToCartOutcome } from '../context/ikas';
 import type { WidgetCampaign, WidgetProduct, WidgetVariant } from '@/lib/campaigns/widget-types';
 import { addToCart, hydrateCart } from '../context/ikas';
-import { cartUrl, goToCart, openCartDrawerWithFallback } from '../context/cart-drawer';
+import { goToCart, openCartDrawerWithFallback } from '../context/cart-drawer';
 import { track } from '../transport/events';
 import { el } from './dom';
 import { createShadowHost } from './shadow-host';
@@ -17,7 +17,7 @@ import { createCta } from './cta';
 const DISMISS_PREFIX = 'rush.dismissed.';
 const CONVERTED_PREFIX = 'rush.converted.';
 const CONVERSION_HIDE_DELAY_MS = 2600;
-const CONVERSION_RESET_DELAY_MS = 2600;
+const CONVERSION_RESET_DELAY_MS = 4200;
 
 export type RenderedCampaign = { destroy: () => void; isMounted: () => boolean };
 
@@ -234,15 +234,6 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
     setTimeout(() => destroy(), CONVERSION_HIDE_DELAY_MS);
   }
 
-  function showCartLink() {
-    if (destroyed || panel.body.querySelector('.rush-cart-link')) return;
-
-    const link = el('a', 'rush-cart-link', 'Sepete git');
-    link.href = cartUrl();
-    panel.body.appendChild(link);
-    panel.open();
-  }
-
   function revealCart() {
     if (data.afterAddToCart === 'cart') {
       setTimeout(() => goToCart(), 600);
@@ -252,8 +243,10 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
     if (data.afterAddToCart === 'drawer') {
       setTimeout(() => {
         panel.close('programmatic');
-        openCartDrawerWithFallback(data.cartTriggerSelector || undefined, showCartLink);
-      }, 700);
+        openCartDrawerWithFallback(data.cartTriggerSelector || undefined, () => {
+          if (!destroyed) panel.open();
+        });
+      }, 1200);
       return;
     }
 

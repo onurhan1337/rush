@@ -148,8 +148,29 @@ export function createVariantPicker({ variants, types, initial, onChange }: Opti
 
   const sync = () => {
     for (const entry of entries) {
-      entry.button.setAttribute('aria-pressed', choice[entry.typeId] === entry.valueId ? 'true' : 'false');
+      const selected = choice[entry.typeId] === entry.valueId;
+      entry.button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      entry.button.tabIndex = selected ? 0 : -1;
     }
+  };
+
+  const focusSibling = (group: HTMLElement, from: HTMLElement, step: number) => {
+    const buttons = Array.from(group.querySelectorAll<HTMLButtonElement>('.rush-variant:not([disabled])'));
+    if (buttons.length < 2) return;
+
+    const index = buttons.indexOf(from as HTMLButtonElement);
+    const next = index === -1 ? 0 : (index + step + buttons.length) % buttons.length;
+    buttons[next].focus();
+    buttons[next].click();
+  };
+
+  const focusEdge = (group: HTMLElement, position: 'first' | 'last') => {
+    const buttons = Array.from(group.querySelectorAll<HTMLButtonElement>('.rush-variant:not([disabled])'));
+    if (!buttons.length) return;
+
+    const target = position === 'first' ? buttons[0] : buttons[buttons.length - 1];
+    target.focus();
+    target.click();
   };
 
   for (const type of types) {
@@ -177,6 +198,34 @@ export function createVariantPicker({ variants, types, initial, onChange }: Opti
       entries.push({ button, typeId: type.id, valueId: value.id });
       scroller.list.appendChild(button);
     }
+
+    group.addEventListener('keydown', (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !target.classList.contains('rush-variant')) return;
+
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        focusSibling(group, target, 1);
+        return;
+      }
+
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        focusSibling(group, target, -1);
+        return;
+      }
+
+      if (event.key === 'Home') {
+        event.preventDefault();
+        focusEdge(group, 'first');
+        return;
+      }
+
+      if (event.key === 'End') {
+        event.preventDefault();
+        focusEdge(group, 'last');
+      }
+    });
 
     group.appendChild(scroller.node);
     node.appendChild(group);

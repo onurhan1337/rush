@@ -27,6 +27,7 @@ export const appearanceSchema = z.object({
   ctaStyle: z.enum(CTA_STYLES).default(DEFAULT_APPEARANCE.ctaStyle),
   autoOpen: z.boolean().default(DEFAULT_APPEARANCE.autoOpen),
   autoOpenDelaySec: z.number().int().min(0).max(60).default(DEFAULT_APPEARANCE.autoOpenDelaySec),
+  useThemeFont: z.boolean().default(DEFAULT_APPEARANCE.useThemeFont),
 });
 
 const _typeCheck: Appearance = {} as z.infer<typeof appearanceSchema>;

@@ -15,10 +15,6 @@ export function storefrontLocale(): string {
   return document.documentElement.getAttribute('lang') || navigator.language || 'tr-TR';
 }
 
-export function upperCase(value: string): string {
-  return value.toLocaleUpperCase(storefrontLocale());
-}
-
 export function formatMoney(amount: number, currency: Currency): string {
   return format(amount, currency, storefrontLocale());
 }
