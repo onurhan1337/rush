@@ -17,6 +17,7 @@ import { createCta } from './cta';
 const DISMISS_PREFIX = 'rush.dismissed.';
 const CONVERTED_PREFIX = 'rush.converted.';
 const CONVERSION_HIDE_DELAY_MS = 2600;
+const CONVERSION_RESET_DELAY_MS = 2600;
 
 export type RenderedCampaign = { destroy: () => void; isMounted: () => boolean };
 
@@ -220,7 +221,14 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
   }
 
   function retireAfterConversion() {
-    if (data.afterConversion === 'keep') return;
+    if (data.afterConversion === 'keep') {
+      setTimeout(() => {
+        if (destroyed) return;
+        converted = false;
+        syncCtaState();
+      }, CONVERSION_RESET_DELAY_MS);
+      return;
+    }
 
     markConverted(key, data.afterConversion);
     setTimeout(() => destroy(), CONVERSION_HIDE_DELAY_MS);
@@ -248,6 +256,8 @@ export function renderOfferProduct(campaign: WidgetCampaign): RenderedCampaign |
       }, 700);
       return;
     }
+
+    if (data.afterConversion === 'keep') return;
 
     setTimeout(() => panel.close('programmatic'), 2000);
   }
