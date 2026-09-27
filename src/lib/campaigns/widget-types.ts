@@ -57,4 +57,6 @@ export type WidgetConfigPayload = {
   campaigns: WidgetCampaign[];
   eventsUrl: string;
   version: string;
+  // ikas merchant id; lets Kanca attribute storefront script errors to a store.
+  merchantId?: string;
 };

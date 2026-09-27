@@ -1,3 +1,4 @@
+import { kanca } from './monitor';
 import { evaluateRules, requiresCart } from '@/lib/campaigns/rules/evaluate';
 import type { CartSnapshot, PageType, RuleContext } from '@/lib/campaigns/rules/types';
 import type { WidgetCampaign, WidgetConfigPayload } from '@/lib/campaigns/widget-types';
@@ -69,7 +70,7 @@ function reconcile(): void {
     if (matches && !rendered.has(campaign.id)) {
       const renderer = getRenderer(campaign.type);
       if (!renderer) continue;
-      const instance = renderer(campaign);
+      const instance = kanca.wrap(renderer, `render:${campaign.type}`)(campaign);
       if (instance) rendered.set(campaign.id, instance);
       continue;
     }
@@ -98,6 +99,7 @@ function applyPayload(payload: WidgetConfigPayload, publicKey: string): void {
   }
 
   if (payload.eventsUrl && !previewMode) initEvents(payload.eventsUrl, publicKey);
+  if (payload.merchantId) kanca.setMerchantId(payload.merchantId);
   reconcile();
 }
 
@@ -138,23 +140,36 @@ function boot(): void {
 
   const loadConfig = () =>
     fetchConfig(scriptOrigin, publicKey)
-      .then((payload) => applyPayload(payload, publicKey))
+      .then(
+        kanca.wrap((payload: WidgetConfigPayload) => {
+          applyPayload(payload, publicKey);
+          kanca.ready();
+        }, 'apply'),
+      )
       .catch(() => {
         return;
       });
 
-  scheduleIdle(() => {
-    onCartChange(() => reconcile());
-    refreshCart(true);
+  scheduleIdle(
+    kanca.wrap(() => {
+      onCartChange(kanca.wrap(() => reconcile(), 'cart'));
+      refreshCart(true);
 
-    onRouteChange(() => {
-      refreshCart(false);
-      reconcile();
+      onRouteChange(
+        kanca.wrap(() => {
+          refreshCart(false);
+          reconcile();
+          void loadConfig();
+        }, 'route'),
+      );
+
       void loadConfig();
-    });
-
-    void loadConfig();
-  });
+    }, 'idle'),
+  );
 }
 
-boot();
+try {
+  kanca.wrap(boot, 'boot')();
+} catch {
+  // Already recorded by Kanca; never break the merchant's page.
+}

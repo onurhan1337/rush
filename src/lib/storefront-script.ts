@@ -25,12 +25,13 @@ export type ScriptStatus = {
 };
 
 export function scriptVersion(baseUrl: string, publicKey: string): string {
-  return crypto.createHash('sha1').update(`${baseUrl}|${publicKey}|2`).digest('hex').slice(0, 8);
+  return crypto.createHash('sha1').update(`${baseUrl}|${publicKey}|3`).digest('hex').slice(0, 8);
 }
 
 export function buildScriptContent(publicKey: string, baseUrl: string): string {
   const src = `${baseUrl}/rush.js?v=${scriptVersion(baseUrl, publicKey)}`;
-  return `<script src="${src}" data-rush-key="${publicKey}" defer></script>`;
+  // crossorigin: rush.js is served with ACAO *, so its errors are not muted to "Script error."
+  return `<script src="${src}" data-rush-key="${publicKey}" crossorigin="anonymous" defer></script>`;
 }
 
 export async function listStorefronts(ikas: IkasClient): Promise<StorefrontInfo[]> {

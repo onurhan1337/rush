@@ -39,12 +39,13 @@ export async function GET(request: NextRequest) {
 
     const settings = await MerchantSettingsManager.getByPublicKey(key);
     if (!settings) return payload(empty);
+    const known: WidgetConfigPayload = { ...empty, merchantId: settings.merchantId };
 
     const campaigns = await CampaignManager.listActive(settings.authorizedAppId);
-    if (!campaigns.length) return payload(empty);
+    if (!campaigns.length) return payload(known);
 
     const authToken = await AuthTokenManager.get(settings.authorizedAppId);
-    if (!authToken || authToken.deleted) return payload(empty);
+    if (!authToken || authToken.deleted) return payload(known);
 
     const loader = createProductLoader(getIkas(authToken), settings.merchantId);
     const widgetCampaigns: WidgetCampaign[] = [];
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
       versions.push(stored.publishedVersion ?? stored.updatedAt);
     }
 
-    return payload({ campaigns: widgetCampaigns, eventsUrl, version: versions.join('.') || '0' });
+    return payload({ campaigns: widgetCampaigns, eventsUrl, version: versions.join('.') || '0', merchantId: settings.merchantId });
   } catch (error) {
     console.error('Public config failed:', error);
     return payload(empty);

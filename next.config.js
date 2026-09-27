@@ -8,6 +8,8 @@ const nextConfig = {
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=300' },
           { key: 'Access-Control-Allow-Origin', value: '*' },
+          // Lets Kanca read rush.js download size/timing from the storefront.
+          { key: 'Timing-Allow-Origin', value: '*' },
         ],
       },
       {

@@ -1,4 +1,5 @@
 import type { WidgetConfigPayload } from '@/lib/campaigns/widget-types';
+import { kanca } from '../monitor';
 
 const CACHE_KEY = 'rush.config';
 const BUCKET_MS = 30_000;
@@ -34,7 +35,7 @@ export async function fetchConfig(origin: string, key: string): Promise<WidgetCo
   if (cached) return cached;
 
   const url = `${origin}/api/public/config?key=${encodeURIComponent(key)}&t=${bucket}`;
-  const response = await fetch(url, { credentials: 'omit' });
+  const response = await kanca.fetch('config', url, { credentials: 'omit' });
   if (!response.ok) throw new Error(`config request failed: ${response.status}`);
 
   const payload = (await response.json()) as WidgetConfigPayload;
