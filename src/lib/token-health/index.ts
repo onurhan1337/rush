@@ -48,8 +48,13 @@ async function checkOnce(token: AuthToken): Promise<TokenHealth> {
   // getIkas keeps the call instrumented by Kanca; the token is fresh, so onCheckToken is a no-op.
   const ikas = getIkas(token);
   try {
-    const data = (await ikas._client.request({ document: PROBE_QUERY })) as { getAuthorizedApp?: { id?: string } | null };
-    return data?.getAuthorizedApp?.id ? 'ok' : 'unknown';
+    const data = (await ikas._client.request({ document: PROBE_QUERY })) as { getAuthorizedApp?: { id?: string } | null } | undefined;
+    if (data?.getAuthorizedApp?.id) return 'ok';
+    // Observed in production: after a merchant removes the app, ikas still accepts
+    // the token but answers getAuthorizedApp with an explicit null. Only that
+    // exact shape counts; a missing field or empty body stays unknown.
+    if (data && 'getAuthorizedApp' in data && data.getAuthorizedApp === null) return 'revoked';
+    return 'unknown';
   } catch (error) {
     const errors = responseOf(error)?.errors;
     const codes = Array.isArray(errors) ? errors.map((item) => String(item?.extensions?.code ?? '')).filter(Boolean) : [];

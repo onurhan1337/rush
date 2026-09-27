@@ -1,7 +1,8 @@
 /**
  * Pure classification for the daily token health check. Deliberately
  * conservative: only an unambiguous "this token is no longer valid" answer
- * from ikas is 'revoked'. Network errors, 5xx, 429, 403 and anything
+ * from ikas is 'revoked' (a removed app is detected in index.ts: ikas keeps
+ * the token working but getAuthorizedApp returns null). Network errors, 5xx, 429, 403 and anything
  * unexpected are 'unknown' and never lead to an uninstall.
  */
 export type TokenHealth = 'ok' | 'revoked' | 'unknown';
