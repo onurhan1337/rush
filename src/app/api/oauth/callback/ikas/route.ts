@@ -169,7 +169,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: { statusCode: 400, message: 'Token exchange failed', ...error.detail } }, { status: 400 });
     }
 
-    console.error('Callback error:', error);
+    // Message only: an HTTP client error here can carry client_secret in its request config.
+    console.error('Callback error:', error instanceof Error ? error.message : 'unknown');
     return NextResponse.json({ error: { statusCode: 500, message: 'Callback failed' } }, { status: 500 });
   }
 }
