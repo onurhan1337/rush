@@ -70,6 +70,11 @@ export class AuthTokenManager {
     });
   }
 
+  static async listActive(): Promise<AuthToken[]> {
+    const tokens = await prisma.authToken.findMany({ where: { deleted: false, authorizedAppId: { not: null } } });
+    return tokens.map(AuthTokenManager.toModel);
+  }
+
   static async list(): Promise<AuthToken[]> {
     const tokens = await prisma.authToken.findMany();
     return tokens.map(AuthTokenManager.toModel);

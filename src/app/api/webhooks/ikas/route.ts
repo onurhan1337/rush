@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateIkasWebhookSignature, type IkasWebhook } from '@ikas/admin-api-client';
 import { z } from 'zod';
 import { config } from '@/globals/config';
-import { getIkas } from '@/helpers/api-helpers';
-import { deleteIkasCampaigns } from '@/lib/campaigns/ikas-campaign-sync';
-import { uninstallScript } from '@/lib/storefront-script';
-import { clearWebhookSubscriptionMarkers } from '@/lib/webhook-subscriptions';
-import { AuthTokenManager } from '@/models/auth-token/manager';
-import { CampaignManager } from '@/models/campaign/manager';
-import { StorefrontScriptManager } from '@/models/storefront-script/manager';
+import { handleUninstall } from '@/lib/uninstall';
 import { WebhookEventManager } from '@/models/webhook-event/manager';
 import { kanca } from '@/lib/kanca';
 
@@ -23,15 +17,6 @@ const webhookSchema = z.object({
   data: z.string(),
   signature: z.string().min(1),
 });
-
-/** Runs one uninstall step; a failure (e.g. token already revoked) must not stop the rest. */
-async function bestEffort(step: string, fn: () => Promise<unknown>): Promise<void> {
-  try {
-    await fn();
-  } catch (error) {
-    console.error(`Uninstall step "${step}" failed:`, error);
-  }
-}
 
 export const POST = kanca.webhook(async (request: NextRequest) => {
   let deliveryId: string | undefined;
@@ -58,27 +43,7 @@ export const POST = kanca.webhook(async (request: NextRequest) => {
     // Everything else (e.g. store/order/created) is acknowledged immediately.
     if (!UNINSTALL_SCOPES.includes(scope)) return NextResponse.json({ ok: true });
 
-    const authToken = await AuthTokenManager.get(authorizedAppId);
-    if (!authToken || authToken.deleted) return NextResponse.json({ ok: true });
-
-    // The token may already be revoked by ikas at this point, so every ikas call is best effort.
-    const ikas = getIkas(authToken);
-    const campaigns = await CampaignManager.list(authorizedAppId);
-
-    for (const campaign of campaigns) {
-      await bestEffort('deleteIkasCampaigns', () => deleteIkasCampaigns(ikas, campaign.ikasCampaignIds));
-    }
-
-    await bestEffort('uninstallScript', () => uninstallScript(ikas, authorizedAppId));
-    await bestEffort('markScriptsDeleted', async () => {
-      for (const record of await StorefrontScriptManager.list(authorizedAppId)) {
-        await StorefrontScriptManager.markDeleted(authorizedAppId, record.storefrontId);
-      }
-    });
-    await CampaignManager.endAll(authorizedAppId);
-    await AuthTokenManager.delete(authorizedAppId);
-    await bestEffort('clearWebhookSubscriptionMarkers', () => clearWebhookSubscriptionMarkers(authorizedAppId));
-    await WebhookEventManager.prune();
+    if (await handleUninstall(authorizedAppId, { reason: 'webhook' })) await WebhookEventManager.prune();
 
     return NextResponse.json({ ok: true });
   } catch (error) {
