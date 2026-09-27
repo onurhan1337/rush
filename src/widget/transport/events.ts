@@ -41,21 +41,25 @@ export function initEvents(eventsUrl: string, key: string): void {
   window.addEventListener('pagehide', flush);
 }
 
+// fetch+keepalive first: blockers drop sendBeacon ("ping") requests while
+// sendBeacon still returns true, so events would vanish silently.
 function deliver(body: string): boolean {
   try {
-    if (navigator.sendBeacon && navigator.sendBeacon(endpoint, new Blob([body], { type: CONTENT_TYPE }))) return true;
+    if (typeof fetch === 'function') {
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': CONTENT_TYPE },
+        body,
+        keepalive: true,
+        credentials: 'omit',
+      }).catch(() => {});
+      return true;
+    }
   } catch {
   }
 
   try {
-    fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': CONTENT_TYPE },
-      body,
-      keepalive: true,
-      credentials: 'omit',
-    }).catch(() => {});
-    return true;
+    return !!navigator.sendBeacon && navigator.sendBeacon(endpoint, new Blob([body], { type: CONTENT_TYPE }));
   } catch {
     return false;
   }
