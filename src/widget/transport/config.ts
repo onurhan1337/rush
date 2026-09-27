@@ -34,7 +34,9 @@ export async function fetchConfig(origin: string, key: string): Promise<WidgetCo
   const cached = readCache(key, bucket);
   if (cached) return cached;
 
-  const url = `${origin}/api/public/config?key=${encodeURIComponent(key)}&t=${bucket}`;
+  // Stable URL (no time bucket) so the CDN keeps one entry per merchant and can
+  // serve it stale-while-revalidate instead of missing every 30s bucket.
+  const url = `${origin}/api/public/config?key=${encodeURIComponent(key)}`;
   const response = await kanca.fetch('config', url, { credentials: 'omit' });
   if (!response.ok) throw new Error(`config request failed: ${response.status}`);
 

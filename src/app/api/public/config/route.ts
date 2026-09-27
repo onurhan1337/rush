@@ -13,10 +13,11 @@ import type { WidgetCampaign, WidgetConfigPayload } from '@/lib/campaigns/widget
 
 const CACHE_CONTROL = 'public, max-age=0, s-maxage=30, stale-while-revalidate=60';
 
+// No `Vary: Origin`: ACAO is `*`, so the body never depends on the Origin and
+// varying on it would only split the CDN cache per storefront domain.
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Cache-Control': CACHE_CONTROL,
-  Vary: 'Origin',
 };
 
 export const dynamic = 'force-dynamic';
