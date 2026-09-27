@@ -67,7 +67,10 @@ export async function onCheckToken(token?: AuthToken): Promise<{ accessToken: st
 
     return { accessToken: undefined };
   } catch (error) {
-    console.error('Failed to check or refresh token:', error);
+    // Never log the raw axios error: its request config carries client_secret and refresh_token.
+    const status = (error as { response?: { status?: number } })?.response?.status;
+    const code = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+    console.error('Failed to check or refresh token:', status ?? 'no status', code ?? (error instanceof Error ? error.message : 'unknown'));
     return { accessToken: undefined };
   }
 }
