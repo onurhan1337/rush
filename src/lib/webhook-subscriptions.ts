@@ -9,10 +9,9 @@ type IkasClient = ikasAdminGraphQLAPIClient<AuthToken>;
 export const WEBHOOK_PATH = '/api/webhooks/ikas';
 
 // Documented scope: must be registered for the app to receive any webhook.
+// ikas has no uninstall scope (store/app/* is rejected with INVALID_SCOPE);
+// removals are detected by the token-health cron instead.
 const REQUIRED_SCOPES = ['store/order/created'];
-
-// Not documented by ikas; attempted best effort so uninstall cleanup can run.
-const UNINSTALL_SCOPES = ['store/app/deleted', 'store/app/uninstalled'];
 
 const MARKER_SCOPE = 'rush/webhook-subscriptions';
 const RECHECK_AFTER_MS = 7 * 86400_000;
@@ -32,7 +31,7 @@ function markerPrefix(authorizedAppId: string): string {
 function markerId(authorizedAppId: string, endpoint: string): string {
   const version = crypto
     .createHash('sha1')
-    .update(`${endpoint}|${[...REQUIRED_SCOPES, ...UNINSTALL_SCOPES].join(',')}`)
+    .update(`${endpoint}|${REQUIRED_SCOPES.join(',')}`)
     .digest('hex')
     .slice(0, 8);
   return `${markerPrefix(authorizedAppId)}${version}`;
@@ -82,20 +81,6 @@ export async function ensureWebhookSubscriptions(ikas: IkasClient, baseUrl: stri
       console.error('saveWebhooks failed for', required, error);
       return false;
     }
-  }
-
-  // Separate calls so an unknown uninstall scope can never break the required one.
-  const rejected: string[] = [];
-  for (const scope of UNINSTALL_SCOPES.filter((item) => !registered.has(item))) {
-    try {
-      const response = await ikas.mutations.saveWebhooks({ input: { endpoint, scopes: [scope] } });
-      if (!response.isSuccess) rejected.push(`${scope}: ${errorCodes(response).join('|') || 'unknown'}`);
-    } catch (error) {
-      rejected.push(`${scope}: ${error instanceof Error ? error.message : 'unknown'}`);
-    }
-  }
-  if (rejected.length) {
-    console.warn('[rush] ikas rejected uninstall webhook scopes:', rejected.join('; '));
   }
 
   return true;
