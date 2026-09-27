@@ -4,13 +4,17 @@ import { apiError, ensureSettings, withMerchant } from '@/lib/api-route-helpers'
 import { campaignWriteSchema } from '@/lib/campaigns/api-schema';
 import { DEFAULT_APPEARANCE } from '@/lib/campaigns/appearance';
 import { getCampaignType } from '@/lib/campaigns/registry';
+import { getPublicBaseUrl } from '@/lib/public-url';
+import { scheduleWebhookSubscriptions } from '@/lib/webhook-subscriptions';
 import { CampaignManager } from '@/models/campaign/manager';
 import type { Campaign } from '@/models/campaign';
 
 export type ListCampaignsApiResponse = { campaigns: Campaign[] };
 export type CreateCampaignApiResponse = { campaign: Campaign };
 
-export const GET = withMerchant(async (_request, context) => {
+export const GET = withMerchant(async (request, context) => {
+  // Dashboard landing call: backfills webhooks for installs that predate them (gated, fire-and-forget).
+  scheduleWebhookSubscriptions(context.ikas, context.authorizedAppId, getPublicBaseUrl(request));
   const campaigns = await CampaignManager.list(context.authorizedAppId);
   return NextResponse.json({ data: { campaigns } });
 });

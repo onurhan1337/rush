@@ -223,6 +223,17 @@ export const DELETE_CAMPAIGN_LIST = gql`
   }
 `;
 
+export const LIST_WEBHOOK = gql`
+  query listWebhook {
+    listWebhook {
+      id
+      scope
+      endpoint
+      deleted
+    }
+  }
+`;
+
 export const SAVE_WEBHOOKS = gql`
   mutation saveWebhooks($input: WebhookInput!) {
     saveWebhooks(input: $input) {

@@ -12,6 +12,32 @@ export class WebhookEventManager {
     }
   }
 
+  static async unmark(id: string): Promise<void> {
+    await prisma.webhookEvent.deleteMany({ where: { id } });
+  }
+
+  /**
+   * Marker rows (id prefixed, e.g. `rush:webhooks:<appId>:<version>`) reuse this
+   * table as a cheap "last done at" record. They never collide with ikas
+   * delivery ids, which are UUIDs.
+   */
+  static async markerAge(id: string): Promise<number | undefined> {
+    const row = await prisma.webhookEvent.findUnique({ where: { id } });
+    return row ? Date.now() - row.receivedAt.getTime() : undefined;
+  }
+
+  static async touchMarker(id: string, scope: string): Promise<void> {
+    await prisma.webhookEvent.upsert({
+      where: { id },
+      update: { receivedAt: new Date() },
+      create: { id, scope },
+    });
+  }
+
+  static async clearMarkers(idPrefix: string): Promise<void> {
+    await prisma.webhookEvent.deleteMany({ where: { id: { startsWith: idPrefix } } });
+  }
+
   static async prune(): Promise<void> {
     const threshold = new Date(Date.now() - RETENTION_DAYS * 86400_000);
     try {

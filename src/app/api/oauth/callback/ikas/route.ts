@@ -9,6 +9,8 @@ import { TokenHelpers } from '@/helpers/token-helpers';
 import { AuthToken } from '@/models/auth-token';
 import { AuthTokenManager } from '@/models/auth-token/manager';
 import { kanca } from '@/lib/kanca';
+import { getPublicBaseUrl } from '@/lib/public-url';
+import { scheduleWebhookSubscriptions } from '@/lib/webhook-subscriptions';
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import z from 'zod';
@@ -135,6 +137,9 @@ export async function GET(request: NextRequest) {
     } as AuthToken;
 
     await AuthTokenManager.put(token);
+
+    // Fresh install: always (re)register webhooks, without delaying the redirect.
+    scheduleWebhookSubscriptions(getIkas(token), authorizedAppId, getPublicBaseUrl(request), { force: true });
 
     kanca.track('install', { merchantId, storeName: merchantResponse.data.getMerchant.storeName ?? undefined });
     await kanca.flush();

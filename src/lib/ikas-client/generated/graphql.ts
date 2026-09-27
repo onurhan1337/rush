@@ -508,6 +508,19 @@ export interface DeleteCampaignListMutation {
   deleteCampaignList: DeleteCampaignListMutationData;
 }
 
+export type ListWebhookQueryVariables = {}
+
+export type ListWebhookQueryData = Array<{
+  id: string;
+  scope: string;
+  endpoint: string;
+  deleted: boolean;
+}>
+
+export interface ListWebhookQuery {
+  listWebhook: ListWebhookQueryData;
+}
+
 export type SaveWebhooksMutationVariables = {
   input: WebhookInput;
 }
@@ -723,6 +736,20 @@ export class GeneratedQueries {
   }
 `;
     return this.client.query<Partial<GetProductByIdQuery>>({ query, variables });
+  }
+
+  async listWebhook(): Promise<APIResult<Partial<ListWebhookQuery>>> {
+    const query = `
+  query listWebhook {
+    listWebhook {
+      id
+      scope
+      endpoint
+      deleted
+    }
+  }
+`;
+    return this.client.query<Partial<ListWebhookQuery>>({ query });
   }
 }
 
