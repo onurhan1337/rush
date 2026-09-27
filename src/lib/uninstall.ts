@@ -39,7 +39,13 @@ export async function handleUninstall(authorizedAppId: string, options: { reason
     await bestEffort('deleteIkasCampaigns', () => deleteIkasCampaigns(ikas, campaign.ikasCampaignIds));
   }
 
-  await bestEffort('uninstallScript', () => uninstallScript(ikas, authorizedAppId));
+  // ikas removes the app's storefront scripts itself when the app is removed
+  // (observed: storefront_sf_script_not_found), so after a token check the
+  // calls would only record false Admin API failures. Campaigns are not removed
+  // by ikas, so they are always deleted above.
+  if (options.reason === 'webhook') {
+    await bestEffort('uninstallScript', () => uninstallScript(ikas, authorizedAppId));
+  }
   await bestEffort('markScriptsDeleted', async () => {
     for (const record of await StorefrontScriptManager.list(authorizedAppId)) {
       await StorefrontScriptManager.markDeleted(authorizedAppId, record.storefrontId);
