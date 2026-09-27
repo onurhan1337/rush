@@ -17,9 +17,9 @@ importers:
       '@ikas/app-helpers':
         specifier: ^1.0.6
         version: 1.0.10
-      '@kanca/ikas':
-        specifier: file:vendor/kanca-ikas-0.1.1.tgz
-        version: file:vendor/kanca-ikas-0.1.1.tgz(react@19.1.0)
+      '@kanca-app/ikas':
+        specifier: ^0.1.1
+        version: 0.1.1(react@19.1.0)
       '@prisma/client':
         specifier: ^6.14.0
         version: 6.14.0(prisma@6.14.0(typescript@5.8.3))(typescript@5.8.3)
@@ -1371,9 +1371,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@kanca/ikas@file:vendor/kanca-ikas-0.1.1.tgz':
-    resolution: {integrity: sha512-OQLTtnyk/7nwJE0yNAv319LXzsc5APgC3uYhGwi/k1LRmbD8zfpo9zACrLpTK4Qz4J87UU5buyVGjdhm9c47vA==, tarball: file:vendor/kanca-ikas-0.1.1.tgz}
-    version: 0.1.1
+  '@kanca-app/ikas@0.1.1':
+    resolution: {integrity: sha512-qOClZ53Vxr/Mv3Zjmj6QocUELV7h27Uft/FjHUbUEuo+H2CkNTEl+E+U3ErFc32kQQvFgKOloa9Ndx1T/xSMLg==}
     engines: {node: '>=18.17'}
     peerDependencies:
       react: '>=17'
@@ -7293,7 +7292,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@kanca/ikas@file:vendor/kanca-ikas-0.1.1.tgz(react@19.1.0)':
+  '@kanca-app/ikas@0.1.1(react@19.1.0)':
     dependencies:
       web-vitals: 5.3.0
     optionalDependencies:

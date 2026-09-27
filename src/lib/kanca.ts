@@ -1,4 +1,4 @@
-import { createKanca } from '@kanca/ikas';
+import { createKanca } from '@kanca-app/ikas';
 import { waitUntil } from '@vercel/functions';
 
 /**
