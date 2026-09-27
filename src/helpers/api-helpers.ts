@@ -26,15 +26,19 @@ export function isTokenExpired(token: AuthToken, now = new Date()): boolean {
  * on failure (an axios error carrying ikas' OAuth response when ikas rejected it).
  */
 export async function refreshAuthToken(token: AuthToken): Promise<AuthToken> {
-  const response = await OAuthAPI.refreshToken(
-    {
-      refresh_token: token.refreshToken,
-      client_id: process.env.NEXT_PUBLIC_CLIENT_ID!,
-      client_secret: process.env.CLIENT_SECRET!,
-    },
-    {
-      storeName: 'api',
-    },
+  const response = await kanca.trackRefresh(
+    () =>
+      OAuthAPI.refreshToken(
+        {
+          refresh_token: token.refreshToken,
+          client_id: process.env.NEXT_PUBLIC_CLIENT_ID!,
+          client_secret: process.env.CLIENT_SECRET!,
+        },
+        {
+          storeName: 'api',
+        },
+      ),
+    { merchantId: token.merchantId },
   );
 
   if (!response.data) {

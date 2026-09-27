@@ -1,12 +1,15 @@
 import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { kanca } from '@/lib/kanca';
-import { checkTokenHealth, isMassRevocation } from '@/lib/token-health';
+import { getIkas } from '@/helpers/api-helpers';
+import { isMassRevocation, refreshIfExpired } from '@/lib/token-health';
 import { handleUninstall } from '@/lib/uninstall';
+import type { AuthToken } from '@/models/auth-token';
 import { AuthTokenManager } from '@/models/auth-token/manager';
 
 // ikas has no app-uninstall webhook, so once a day every stored token is
-// probed; stores whose token ikas rejects are treated as uninstalled.
+// refreshed if expired and checked with kanca.checkInstalls (getAuthorizedApp
+// null twice). Stores whose refresh token ikas rejects are uninstalled too.
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -47,7 +50,8 @@ export async function GET(request: NextRequest) {
   try {
     // Shuffled so a run cut short by the deadline does not always skip the same stores.
     const queue = shuffle(await AuthTokenManager.listActive());
-    const revokedAppIds: string[] = [];
+    const fresh: AuthToken[] = [];
+    const refreshRevoked: string[] = [];
 
     const worker = async () => {
       for (let token = queue.shift(); token; token = queue.shift()) {
@@ -57,29 +61,54 @@ export async function GET(request: NextRequest) {
         }
         let health;
         try {
-          health = await checkTokenHealth(token);
+          health = await refreshIfExpired(token);
         } catch (error) {
-          console.error('[rush] token health: check failed:', error instanceof Error ? error.message : 'unknown error');
+          console.error('[rush] token health: refresh failed:', error instanceof Error ? error.message : 'unknown error');
           health = 'unknown' as const;
         }
-        counts.checked++;
-        counts[health]++;
-        if (health === 'revoked') revokedAppIds.push(token.authorizedAppId!);
+        if (health === 'ok') fresh.push(token);
+        else {
+          counts.checked++;
+          counts[health]++;
+          if (health === 'revoked') refreshRevoked.push(token.authorizedAppId!);
+        }
       }
     };
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
-    if (isMassRevocation(counts.revoked, counts.checked)) {
-      console.error(`[rush] token health: ${counts.revoked}/${counts.checked} tokens look revoked, refusing to uninstall (possible ikas auth outage)`);
-    } else {
-      for (const authorizedAppId of revokedAppIds) {
-        if (elapsed() > UNINSTALL_DEADLINE_MS) break;
-        try {
-          if (await handleUninstall(authorizedAppId, { reason: 'token-revoked' })) counts.uninstalled++;
-        } catch (error) {
-          console.error('[rush] token health: uninstall failed:', error instanceof Error ? error.message : 'unknown error');
-        }
+    const byMerchant = new Map(fresh.map((token) => [token.merchantId, token]));
+    const { results, massRevocation } = await kanca.checkInstalls(
+      fresh.map((token) => ({ merchantId: token.merchantId, client: getIkas(token) })),
+      { concurrency: CONCURRENCY },
+    );
+    const removed: string[] = [];
+    for (const result of results) {
+      counts.checked++;
+      if (result.state === 'installed') counts.ok++;
+      else if (result.state === 'unknown') counts.unknown++;
+      else {
+        counts.revoked++;
+        const token = byMerchant.get(result.merchantId);
+        if (token?.authorizedAppId) removed.push(token.authorizedAppId);
       }
+    }
+    if (massRevocation) {
+      console.error(`[rush] token health: kanca.checkInstalls refused to record uninstalls (possible ikas auth outage)`);
+    }
+
+    const uninstall = async (authorizedAppId: string, reason: 'token-revoked' | 'app-removed') => {
+      if (elapsed() > UNINSTALL_DEADLINE_MS) return;
+      try {
+        if (await handleUninstall(authorizedAppId, { reason })) counts.uninstalled++;
+      } catch (error) {
+        console.error('[rush] token health: uninstall failed:', error instanceof Error ? error.message : 'unknown error');
+      }
+    };
+    for (const authorizedAppId of removed) await uninstall(authorizedAppId, 'app-removed');
+    if (isMassRevocation(refreshRevoked.length, counts.checked)) {
+      console.error(`[rush] token health: ${refreshRevoked.length}/${counts.checked} refresh tokens look revoked, refusing to uninstall (possible ikas auth outage)`);
+    } else {
+      for (const authorizedAppId of refreshRevoked) await uninstall(authorizedAppId, 'token-revoked');
     }
 
     console.log(

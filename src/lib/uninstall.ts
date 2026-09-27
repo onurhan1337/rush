@@ -9,10 +9,11 @@ import { StorefrontScriptManager } from '@/models/storefront-script/manager';
 
 /**
  * Why rush is uninstalling a store:
- * - 'webhook': ikas sent an uninstall webhook (Kanca's webhook wrapper already records the uninstall).
- * - 'token-revoked': the daily token health check found the store's token revoked.
+ * - 'webhook': ikas sent an uninstall webhook.
+ * - 'token-revoked': the daily token health check could not refresh the store's token.
+ * - 'app-removed': kanca.checkInstalls found the app removed (Kanca already recorded the uninstall).
  */
-export type UninstallReason = 'webhook' | 'token-revoked';
+export type UninstallReason = 'webhook' | 'token-revoked' | 'app-removed';
 
 /** Runs one uninstall step; a failure (e.g. token already revoked) must not stop the rest. */
 async function bestEffort(step: string, fn: () => Promise<unknown>): Promise<void> {
@@ -55,9 +56,8 @@ export async function handleUninstall(authorizedAppId: string, options: { reason
   await AuthTokenManager.delete(authorizedAppId);
   await bestEffort('clearWebhookSubscriptionMarkers', () => clearWebhookSubscriptionMarkers(authorizedAppId));
 
-  // The webhook path is already recorded by kanca.webhook() for uninstall scopes.
-  if (options.reason !== 'webhook') {
-    kanca.track('uninstall', { merchantId: authToken.merchantId, attrs: { source: 'token-check' } });
+  if (options.reason !== 'app-removed') {
+    kanca.track('uninstall', { merchantId: authToken.merchantId, attrs: { source: options.reason } });
   }
 
   return true;

@@ -1,26 +1,13 @@
 /**
- * Pure classification for the daily token health check. Deliberately
- * conservative: only an unambiguous "this token is no longer valid" answer
- * from ikas is 'revoked' (a removed app is detected in index.ts: ikas keeps
- * the token working but getAuthorizedApp returns null). Network errors, 5xx, 429, 403 and anything
- * unexpected are 'unknown' and never lead to an uninstall.
+ * Pure classification for the daily token health check's refresh step. Only an
+ * unambiguous "this refresh token is no longer valid" answer from ikas is 'revoked'.
+ * A removed app is detected by kanca.checkInstalls (getAuthorizedApp returns null).
  */
 export type TokenHealth = 'ok' | 'revoked' | 'unknown';
-
-const REVOKED_GRAPHQL_CODES = new Set(['UNAUTHENTICATED', 'UNAUTHORIZED', 'LOGIN_REQUIRED', 'INVALID_TOKEN']);
 
 // OAuth errors about the grant itself. 'invalid_client' / 'unauthorized_client'
 // are about rush's own credentials and would hit every store, so they stay unknown.
 const REVOKED_REFRESH_ERRORS = new Set(['invalid_grant', 'unauthorized']);
-
-/** A failed Admin API call: HTTP status (undefined for network errors) and GraphQL error codes. */
-export function classifyApiFailure(status: number | undefined, codes: string[]): TokenHealth {
-  if (status === 401) return 'revoked';
-  // GraphQL error codes only count on a 2xx answer; a 5xx/429 is never trusted.
-  const answered = status !== undefined && status >= 200 && status < 300;
-  if (answered && codes.some((code) => REVOKED_GRAPHQL_CODES.has(code.toUpperCase()))) return 'revoked';
-  return 'unknown';
-}
 
 /** A failed OAuth refresh: HTTP status (undefined for network errors) and the OAuth `error` field. */
 export function classifyRefreshFailure(status: number | undefined, oauthError: string | undefined): TokenHealth {
