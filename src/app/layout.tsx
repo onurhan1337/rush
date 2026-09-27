@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { I18nProvider } from "@/lib/i18n";
+import { KancaVitals } from "@kanca/ikas/react";
 
 const robotoSlabHeading = Roboto_Slab({subsets:['latin'],variable:'--font-heading'});
 
@@ -21,6 +22,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <TooltipProvider>{children}</TooltipProvider>
         </I18nProvider>
         <Toaster position="bottom-right" />
+        {process.env.NEXT_PUBLIC_KANCA_PUBLIC_KEY ? (
+          <KancaVitals publicKey={process.env.NEXT_PUBLIC_KANCA_PUBLIC_KEY} endpoint={process.env.NEXT_PUBLIC_KANCA_ENDPOINT} />
+        ) : null}
       </body>
     </html>
   );

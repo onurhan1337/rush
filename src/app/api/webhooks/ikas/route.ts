@@ -8,6 +8,7 @@ import { uninstallScript } from '@/lib/storefront-script';
 import { AuthTokenManager } from '@/models/auth-token/manager';
 import { CampaignManager } from '@/models/campaign/manager';
 import { WebhookEventManager } from '@/models/webhook-event/manager';
+import { kanca } from '@/lib/kanca';
 
 const UNINSTALL_SCOPES = ['store/app/deleted', 'store/app/uninstalled', 'store/authorizedApp/deleted'];
 
@@ -21,7 +22,7 @@ const webhookSchema = z.object({
   signature: z.string().min(1),
 });
 
-export async function POST(request: NextRequest) {
+export const POST = kanca.webhook(async (request: NextRequest) => {
   try {
     if (!config.oauth.clientSecret) {
       console.error('ikas webhook verification is not configured');
@@ -63,4 +64,4 @@ export async function POST(request: NextRequest) {
     console.error('ikas webhook failed:', error);
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
   }
-}
+});

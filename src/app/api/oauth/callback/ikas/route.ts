@@ -8,6 +8,7 @@ import { JwtHelpers } from '@/helpers/jwt-helpers';
 import { TokenHelpers } from '@/helpers/token-helpers';
 import { AuthToken } from '@/models/auth-token';
 import { AuthTokenManager } from '@/models/auth-token/manager';
+import { kanca } from '@/lib/kanca';
 import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import z from 'zod';
@@ -134,6 +135,9 @@ export async function GET(request: NextRequest) {
     } as AuthToken;
 
     await AuthTokenManager.put(token);
+
+    kanca.track('install', { merchantId, storeName: merchantResponse.data.getMerchant.storeName ?? undefined });
+    await kanca.flush();
 
     session.expiresAt = new Date(Date.now() + 3600 * 1000);
     session.merchantId = merchantId;

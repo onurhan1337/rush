@@ -4,14 +4,17 @@ import { AuthToken } from '../models/auth-token';
 import { AuthTokenManager } from '../models/auth-token/manager';
 import { ikasAdminGraphQLAPIClient } from '../lib/ikas-client/generated/graphql';
 import { config } from '../globals/config';
+import { kanca } from '../lib/kanca';
 
 export function getIkas(token: AuthToken): ikasAdminGraphQLAPIClient<AuthToken> {
-  return new ikasAdminGraphQLAPIClient<AuthToken>({
-    graphApiUrl: config.graphApiUrl!,
-    accessToken: token.accessToken,
-    tokenData: token,
-    onCheckToken: () => onCheckToken(token),
-  });
+  return kanca.instrument(
+    new ikasAdminGraphQLAPIClient<AuthToken>({
+      graphApiUrl: config.graphApiUrl!,
+      accessToken: token.accessToken,
+      tokenData: token,
+      onCheckToken: () => onCheckToken(token),
+    }),
+  );
 }
 
 export async function onCheckToken(token?: AuthToken): Promise<{ accessToken: string | undefined; tokenData?: AuthToken }> {
