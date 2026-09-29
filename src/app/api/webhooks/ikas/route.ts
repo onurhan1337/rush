@@ -2,11 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateIkasWebhookSignature, type IkasWebhook } from '@ikas/admin-api-client';
 import { z } from 'zod';
 import { config } from '@/globals/config';
-import { handleUninstall } from '@/lib/uninstall';
 import { WebhookEventManager } from '@/models/webhook-event/manager';
 import { kanca } from '@/lib/kanca';
-
-const UNINSTALL_SCOPES = ['store/app/deleted', 'store/app/uninstalled', 'store/authorizedApp/deleted'];
 
 const webhookSchema = z.object({
   id: z.string().min(1),
@@ -34,17 +31,11 @@ export const POST = kanca.webhook(async (request: NextRequest) => {
       return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
     }
 
-    const { scope, authorizedAppId } = webhook;
-
-    const firstDelivery = await WebhookEventManager.markProcessed(webhook.id, scope);
+    const firstDelivery = await WebhookEventManager.markProcessed(webhook.id, webhook.scope);
     if (!firstDelivery) return NextResponse.json({ ok: true, duplicate: true });
     deliveryId = webhook.id;
 
-    // Everything else (e.g. store/order/created) is acknowledged immediately.
-    if (!UNINSTALL_SCOPES.includes(scope)) return NextResponse.json({ ok: true });
-
-    if (await handleUninstall(authorizedAppId, { reason: 'webhook' })) await WebhookEventManager.prune();
-
+    // ikas has no uninstall webhook; removals are handled by the token-health cron.
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('ikas webhook failed:', error);

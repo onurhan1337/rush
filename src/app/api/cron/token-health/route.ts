@@ -6,6 +6,7 @@ import { isMassRevocation, refreshIfExpired } from '@/lib/token-health';
 import { handleUninstall } from '@/lib/uninstall';
 import type { AuthToken } from '@/models/auth-token';
 import { AuthTokenManager } from '@/models/auth-token/manager';
+import { WebhookEventManager } from '@/models/webhook-event/manager';
 
 // ikas has no app-uninstall webhook, so once a day every stored token is
 // refreshed if expired and checked with kanca.checkInstalls (getAuthorizedApp
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
     const byMerchant = new Map(fresh.map((token) => [token.merchantId, token]));
     const { results, massRevocation } = await kanca.checkInstalls(
       fresh.map((token) => ({ merchantId: token.merchantId, client: getIkas(token) })),
-      { concurrency: CONCURRENCY },
+      { concurrency: CONCURRENCY, deadlineMs: Math.max(0, CHECK_DEADLINE_MS - elapsed()) },
     );
     const removed: string[] = [];
     for (const result of results) {
@@ -110,6 +111,8 @@ export async function GET(request: NextRequest) {
     } else {
       for (const authorizedAppId of refreshRevoked) await uninstall(authorizedAppId, 'token-revoked');
     }
+
+    await WebhookEventManager.prune();
 
     console.log(
       `[rush] token health: checked=${counts.checked} ok=${counts.ok} revoked=${counts.revoked} unknown=${counts.unknown} skipped=${counts.skipped} uninstalled=${counts.uninstalled} ms=${elapsed()}`,

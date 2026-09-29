@@ -18,8 +18,8 @@ importers:
         specifier: ^1.0.6
         version: 1.0.10
       '@kanca-app/ikas':
-        specifier: ^0.3.0
-        version: 0.3.0(react@19.1.0)
+        specifier: ^0.4.0
+        version: 0.4.0(react@19.1.0)
       '@prisma/client':
         specifier: ^6.14.0
         version: 6.14.0(prisma@6.14.0(typescript@5.8.3))(typescript@5.8.3)
@@ -1371,8 +1371,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@kanca-app/ikas@0.3.0':
-    resolution: {integrity: sha512-qjsCbyJlg0li/vbKDFN1y4iGBzv/RiEuF+x+ZEjrvwvAFwBdzb2IJMlkH4bHWBEngiZ9Ivo/14C7ni3Vxuw2Xg==}
+  '@kanca-app/ikas@0.4.0':
+    resolution: {integrity: sha512-EIpi+FZAtkF9Pu+2Rhs5vPdrW041CwoVIp/mQyYQIWyg5xOgKKii1kSe+bW9VPqPAQpWsMx5nLGeXWWRFt1NIQ==}
     engines: {node: '>=18.17'}
     peerDependencies:
       react: '>=17'
@@ -7292,7 +7292,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@kanca-app/ikas@0.3.0(react@19.1.0)':
+  '@kanca-app/ikas@0.4.0(react@19.1.0)':
     dependencies:
       web-vitals: 5.3.0
     optionalDependencies:
